@@ -104,3 +104,47 @@ export async function requestInfoAction(profileId: string, message: string) {
   revalidatePath("/admin/applications");
   return { success: true };
 }
+
+export async function approveEventAction(eventId: string, notes?: string) {
+  await requireAdmin();
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { error: "Service unavailable" };
+
+  const { error } = await supabase
+    .from("events")
+    .update({
+      admin_approval: "approved",
+      admin_event_notes: notes || null,
+      status: "published",
+    })
+    .eq("id", eventId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  revalidatePath(`/admin/events/${eventId}`);
+  return { success: true };
+}
+
+export async function rejectEventAction(eventId: string, reason: string) {
+  await requireAdmin();
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { error: "Service unavailable" };
+
+  const { error } = await supabase
+    .from("events")
+    .update({
+      admin_approval: "rejected",
+      admin_event_notes: reason,
+      status: "draft",
+    })
+    .eq("id", eventId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
+  revalidatePath(`/admin/events/${eventId}`);
+  return { success: true };
+}
