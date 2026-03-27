@@ -1,10 +1,10 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { revalidatePath } from "next/cache";
 
 export async function registerForEventAction(formData: FormData) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const eventId = formData.get("eventId") as string;
@@ -69,7 +69,7 @@ export async function registerForEventAction(formData: FormData) {
 }
 
 export async function confirmPaymentAction(registrationId: string) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const paymentRef = `PAY-${Date.now().toString(36).toUpperCase()}`;

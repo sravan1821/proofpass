@@ -1,11 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireAdmin } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import Link from "next/link";
 import { signOutAction } from "../sign-in/actions";
 
 export default async function AdminDashboard() {
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
 
   // Fetch stats
   const { count: totalOrganizers } = await supabase!.from("profiles").select("*", { count: "exact", head: true }).eq("role", "organizer");
@@ -14,13 +15,13 @@ export default async function AdminDashboard() {
   const { count: totalCerts } = await supabase!.from("certificates").select("*", { count: "exact", head: true });
 
   // Recent pending applications
-  const { data: pendingApplications } = await supabase!
+  const { data: pendingApplications } = (await supabase!
     .from("profiles")
     .select("*")
     .eq("role", "organizer")
     .in("approval_status", ["submitted", "under_review"])
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(5)) as { data: any[] | null };
 
   return (
     <div style={{ minHeight: "100vh", background: "radial-gradient(circle at 30% 10%, rgba(220,38,38,0.08), transparent 40%), linear-gradient(180deg, #0a0606 0%, #0d0808 42%, #110a0a 100%)" }}>
@@ -62,7 +63,7 @@ export default async function AdminDashboard() {
             <p style={{ color: "var(--muted-foreground)", textAlign: "center", padding: "32px 0" }}>No pending applications</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {pendingApplications.map((app) => (
+              {pendingApplications.map((app: any) => (
                 <Link key={app.id} href={`/admin/applications/${app.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", borderRadius: "10px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", transition: "all 0.2s" }}>
                   <div>
                     <p className="font-semibold" style={{ marginBottom: "4px" }}>{app.org_name || app.full_name}</p>

@@ -1,13 +1,13 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { requireApprovedOrganizer } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export async function createEventAction(formData: FormData) {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const name = formData.get("name") as string;
@@ -50,7 +50,7 @@ export async function createEventAction(formData: FormData) {
 
 export async function updateEventStatusAction(eventId: string, status: string) {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -69,7 +69,7 @@ export async function updateEventStatusAction(eventId: string, status: string) {
 
 export async function addParticipantAction(formData: FormData) {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const eventId = formData.get("eventId") as string;
@@ -100,7 +100,7 @@ export async function addParticipantAction(formData: FormData) {
 
 export async function updateParticipantCategoryAction(participantId: string, category: string, eventId: string) {
   await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -116,7 +116,7 @@ export async function updateParticipantCategoryAction(participantId: string, cat
 
 export async function deleteParticipantAction(participantId: string, eventId: string) {
   await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase.from("participants").delete().eq("id", participantId);

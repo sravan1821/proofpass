@@ -1,70 +1,72 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { createSupabaseBrowserClient } from "@/lib/db/supabase/client";
+import { useSearchParams } from "next/navigation";
+import { requestPasswordResetAction, resetPasswordAction } from "./actions";
 
 type Step = "email" | "sent" | "reset";
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordContent() {
+  const searchParams = useSearchParams();
+  const initialStep = useMemo<Step>(() => {
+    return searchParams.get("token") ? "reset" : "email";
+  }, [searchParams]);
+  const initialError = useMemo(() => {
+    const errorCode = searchParams.get("error");
+    if (errorCode === "oauth_callback_failed") return "Unable to complete password recovery. Please try again.";
+    if (errorCode === "service_unavailable") return "Authentication service unavailable. Please try again later.";
+    return "";
+  }, [searchParams]);
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError);
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetUrl, setResetUrl] = useState("");
+
+  useEffect(() => {
+    setStep(initialStep);
+  }, [initialStep]);
+
+  useEffect(() => {
+    setError(initialError);
+  }, [initialError]);
 
   async function handleSendReset() {
     setError("");
     setLoading(true);
-    const supabase = createSupabaseBrowserClient();
-    if (!supabase) {
-      setError("Service unavailable");
+    const formData = new FormData();
+    formData.set("email", email);
+    const result = await requestPasswordResetAction(formData);
+    if (result?.error) {
+      setError(result.error);
       setLoading(false);
       return;
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/forgot-password?step=reset`,
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
+    setResetUrl(result?.resetUrl || "");
     setStep("sent");
     setLoading(false);
   }
 
   async function handleResetPassword() {
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-
     setError("");
     setLoading(true);
-    const supabase = createSupabaseBrowserClient();
-    if (!supabase) {
-      setError("Service unavailable");
+    const formData = new FormData();
+    formData.set("token", searchParams.get("token") || "");
+    formData.set("password", password);
+    formData.set("confirmPassword", confirmPassword);
+    const result = await resetPasswordAction(formData);
+
+    if (result?.error) {
+      setError(result.error);
       setLoading(false);
       return;
     }
 
-    const { error } = await supabase.auth.updateUser({ password });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
+    setLoading(false);
     window.location.href = "/sign-in";
   }
 
@@ -107,6 +109,14 @@ export default function ForgotPasswordPage() {
               <p style={{ color: "var(--muted-foreground)", lineHeight: 1.7 }}>
                 We&apos;ve sent a password reset link to <strong style={{ color: "var(--foreground)" }}>{email}</strong>. Please check your inbox.
               </p>
+              {resetUrl ? (
+                <p style={{ marginTop: "16px", color: "var(--warning)", fontSize: "0.85rem", lineHeight: 1.6 }}>
+                  Development reset link:{" "}
+                  <a href={resetUrl} style={{ color: "var(--primary-soft)", textDecoration: "underline" }}>
+                    {resetUrl}
+                  </a>
+                </p>
+              ) : null}
             </div>
           )}
 
@@ -134,5 +144,13 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordContent />
+    </Suspense>
   );
 }

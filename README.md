@@ -9,7 +9,7 @@ The current repo includes:
 - Certificate issue screen
 - Public verify page with active, revoked, and not-found demo states
 - Public project portfolio page
-- Blueprint-aligned `lib`, `types`, `supabase`, and API route scaffolding
+- Blueprint-aligned `lib`, `types`, MongoDB-backed data access, and API route scaffolding
 
 ## Run Locally
 
@@ -31,8 +31,26 @@ Open `http://localhost:3000`.
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local` and fill in the values when you connect Supabase and Resend.
+Copy `.env.example` to `.env.local` and fill in the MongoDB values.
+
+## Test Credentials
+
+To create local test login accounts in MongoDB:
+
+```bash
+npm run seed:test-users
+```
+
+This script requires:
+
+- `MONGODB_URI`
+- `AUTH_SECRET`
+
+Default seeded credentials:
+
+- Admin: `admin@proofpass.local` / `ProofPass123!`
+- Organizer: `organizer@proofpass.local` / `ProofPass123!`
 
 ## Current Scope
 
-This pass ports the design into the requested stack and lays down the correct folder structure, demo data, validation, and SQL schema baseline. The UI is demo-ready, but the Supabase writes, auth, storage, and email delivery are still scaffolded rather than fully wired.
+This pass ports the design into the requested stack and lays down the correct folder structure, demo data, validation, and MongoDB-backed auth/data baseline. The UI is demo-ready, but some flows still use a lightweight compatibility facade over the existing page/action code instead of a fully custom Mongo repository layer.

@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import Link from "next/link";
 import { EventRecord } from "./types";
 
@@ -96,7 +96,7 @@ export default async function PublicEventsPage() {
   const regCounts: Record<string, number> = {};
   let isDemo = true;
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (supabase) {
     const { data } = await supabase
       .from("events")

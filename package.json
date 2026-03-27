@@ -6,14 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:test-users": "node scripts/create-test-users.mjs"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.9.0",
-    "@supabase/supabase-js": "^2.100.0",
+    "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "jose": "^6.2.2",
     "lucide-react": "^1.6.0",
+    "mongodb": "^7.1.1",
     "next": "16.2.1",
     "qrcode": "^1.5.4",
     "react": "19.2.4",

@@ -1,6 +1,8 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { findProfile, verifyPassword } from "@/lib/auth/mongo";
+import { createUserSession, clearUserSession } from "@/lib/auth/session";
+import { getPostSignInRedirect } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export async function signInAction(formData: FormData) {
@@ -11,54 +13,37 @@ export async function signInAction(formData: FormData) {
     return { error: "Email and password are required." };
   }
 
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) {
-    return { error: "Service unavailable. Please try again later." };
+  const user = await verifyPassword(email, password);
+  if (!user) {
+    return { error: "Invalid email or password." };
   }
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  // Get user profile to determine redirect
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Authentication failed." };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, approval_status")
-    .eq("auth_user_id", user.id)
-    .single();
-
+  const profile = await findProfile({ auth_user_id: user.id });
   if (!profile) {
     return { error: "Profile not found. Please contact support." };
-  }
-
-  if (profile.role === "super_admin") {
-    redirect("/admin");
-  }
-
-  if (profile.approval_status === "approved") {
-    redirect("/dashboard");
-  }
-
-  if (profile.approval_status === "submitted" || profile.approval_status === "under_review") {
-    redirect("/register/pending");
   }
 
   if (profile.approval_status === "rejected") {
     return { error: "Your application has been rejected. Please contact support." };
   }
 
-  redirect("/dashboard");
+  await createUserSession({ id: user.id, email: user.email });
+
+  redirect(
+    getPostSignInRedirect({
+      role: profile.role as "super_admin" | "organizer",
+      approval_status: profile.approval_status as
+        | "submitted"
+        | "under_review"
+        | "approved"
+        | "rejected"
+        | "suspended"
+        | "revoked",
+    }),
+  );
 }
 
 export async function signOutAction() {
-  const supabase = await createSupabaseServerClient();
-  if (supabase) {
-    await supabase.auth.signOut();
-  }
+  await clearUserSession();
   redirect("/sign-in");
 }

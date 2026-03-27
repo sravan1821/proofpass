@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createAuthUser, findProfile, insertProfile } from "@/lib/auth/mongo";
 import { redirect } from "next/navigation";
 
 export async function registerOrganizerAction(formData: FormData) {
@@ -29,41 +29,24 @@ export async function registerOrganizerAction(formData: FormData) {
     return { error: "Purpose description must be at least 50 characters." };
   }
 
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) {
-    return { error: "Service unavailable. Please try again later." };
-  }
-
-  // Check for duplicate email
-  const { data: existing } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .single();
-
+  const existing = await findProfile({ email: email.toLowerCase() });
   if (existing) {
     return { error: "An application with this email already exists." };
   }
 
-  // Create auth user
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
+  const { user, error: authError } = await createAuthUser(email, password);
   if (authError) {
-    return { error: authError.message };
+    return { error: authError };
   }
 
-  if (!authData.user) {
-    return { error: "Failed to create account. Please try again." };
+  if (!user) {
+    return { error: "Service unavailable. Please try again later." };
   }
 
-  // Create profile
-  const { error: profileError } = await supabase.from("profiles").insert({
-    auth_user_id: authData.user.id,
+  const { error: profileError } = await insertProfile({
+    auth_user_id: user.id,
     full_name: fullName,
-    email,
+    email: email.toLowerCase(),
     role: "organizer",
     org_name: orgName,
     org_type: orgType,
@@ -77,7 +60,7 @@ export async function registerOrganizerAction(formData: FormData) {
   });
 
   if (profileError) {
-    return { error: "Failed to save application: " + profileError.message };
+    return { error: "Failed to save application: " + profileError };
   }
 
   redirect("/register/success");

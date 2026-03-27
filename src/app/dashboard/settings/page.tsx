@@ -1,9 +1,9 @@
 import { requireApprovedOrganizer } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 
 export default async function SettingsPage() {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
 
   const { data: profile } = await supabase!
     .from("profiles")
