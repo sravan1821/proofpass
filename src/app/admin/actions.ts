@@ -1,12 +1,12 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { requireAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function approveApplicationAction(profileId: string) {
   const admin = await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -27,7 +27,7 @@ export async function approveApplicationAction(profileId: string) {
 
 export async function rejectApplicationAction(profileId: string, reason: string) {
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -47,7 +47,7 @@ export async function rejectApplicationAction(profileId: string, reason: string)
 
 export async function suspendOrganizerAction(profileId: string, reason: string) {
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -67,7 +67,7 @@ export async function suspendOrganizerAction(profileId: string, reason: string) 
 
 export async function revokeOrganizerAction(profileId: string, reason: string) {
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -87,7 +87,7 @@ export async function revokeOrganizerAction(profileId: string, reason: string) {
 
 export async function requestInfoAction(profileId: string, message: string) {
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -107,7 +107,7 @@ export async function requestInfoAction(profileId: string, message: string) {
 
 export async function approveEventAction(eventId: string, notes?: string) {
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -129,7 +129,7 @@ export async function approveEventAction(eventId: string, notes?: string) {
 
 export async function rejectEventAction(eventId: string, reason: string) {
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase

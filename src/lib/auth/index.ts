@@ -1,4 +1,5 @@
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { findProfile } from "@/lib/auth/mongo";
+import { clearUserSession, getUserSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
 export type UserRole = "super_admin" | "organizer";
@@ -15,29 +16,39 @@ export interface UserProfile {
   approvalStatus: ApprovalStatus;
 }
 
+type RedirectProfile = {
+  role: UserRole;
+  approval_status: ApprovalStatus;
+};
+
+export function getPostSignInRedirect(profile: RedirectProfile): string {
+  if (profile.role === "super_admin") {
+    return "/admin";
+  }
+
+  if (profile.approval_status === "submitted" || profile.approval_status === "under_review") {
+    return "/register/pending";
+  }
+
+  return "/dashboard";
+}
+
 export async function getCurrentUser(): Promise<UserProfile | null> {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return null;
+  const session = await getUserSession();
+  if (!session) return null;
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("auth_user_id", user.id)
-    .single();
+  const profile = await findProfile({ auth_user_id: session.userId });
 
   if (!profile) return null;
 
   return {
-    id: profile.id,
-    authUserId: user.id,
-    fullName: profile.full_name,
-    email: profile.email,
+    id: String(profile.id),
+    authUserId: session.userId,
+    fullName: String(profile.full_name),
+    email: String(profile.email),
     role: profile.role as UserRole,
-    orgName: profile.org_name,
-    orgLogoUrl: profile.org_logo_url,
+    orgName: (profile.org_name as string | null) ?? null,
+    orgLogoUrl: (profile.org_logo_url as string | null) ?? null,
     approvalStatus: profile.approval_status as ApprovalStatus,
   };
 }
@@ -62,9 +73,6 @@ export async function requireAdmin(): Promise<UserProfile> {
 }
 
 export async function signOut() {
-  const supabase = await createSupabaseServerClient();
-  if (supabase) {
-    await supabase.auth.signOut();
-  }
+  await clearUserSession();
   redirect("/sign-in");
 }

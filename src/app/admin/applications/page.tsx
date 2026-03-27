@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireAdmin } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import Link from "next/link";
 
 const STATUS_TABS = [
@@ -17,7 +18,7 @@ export default async function ApplicationsPage({
   searchParams: Promise<{ status?: string; q?: string }>;
 }) {
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   const params = await searchParams;
   const activeTab = params.status || "all";
   const searchQuery = params.q || "";
@@ -36,12 +37,12 @@ export default async function ApplicationsPage({
     }
   }
 
-  const { data: applications } = await query;
+  const { data: applications } = (await query) as { data: any[] | null };
 
   // Client-side search filter (since Supabase text search on multiple cols is limited)
   const filtered = searchQuery
     ? applications?.filter(
-        (app) =>
+        (app: any) =>
           (app.org_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
           (app.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
           (app.full_name || "").toLowerCase().includes(searchQuery.toLowerCase())
@@ -226,7 +227,7 @@ export default async function ApplicationsPage({
                   </td>
                 </tr>
               ) : (
-                filtered.map((app) => (
+                filtered.map((app: any) => (
                   <tr
                     key={app.id}
                     style={{

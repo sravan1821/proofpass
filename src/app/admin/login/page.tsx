@@ -1,12 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { signInAction } from "@/app/sign-in/actions";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
-export default function AdminLoginPage() {
-  const [error, setError] = useState("");
+function AdminLoginContent() {
+  const searchParams = useSearchParams();
+  const initialError = useMemo(() => {
+    const errorCode = searchParams.get("error");
+    if (errorCode === "oauth_callback_failed") return "Unable to complete sign-in. Please try again.";
+    if (errorCode === "service_unavailable") return "Authentication service unavailable. Please try again later.";
+    if (errorCode === "profile_not_found") return "Profile not found. Please contact support.";
+    if (errorCode === "application_rejected") return "Your application has been rejected. Please contact support.";
+    return "";
+  }, [searchParams]);
+  const [error, setError] = useState(initialError);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setError(initialError);
+  }, [initialError]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -72,5 +86,13 @@ export default function AdminLoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminLoginContent />
+    </Suspense>
   );
 }

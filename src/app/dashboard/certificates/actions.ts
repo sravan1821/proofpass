@@ -1,12 +1,12 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { requireApprovedOrganizer } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function issueCertificatesAction(eventId: string) {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   // Get event
@@ -93,7 +93,7 @@ export async function issueCertificatesAction(eventId: string) {
 
 export async function revokeCertificateAction(certificateId: string, reason: string) {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireApprovedOrganizer } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/db/supabase/server";
 import { notFound } from "next/navigation";
@@ -20,11 +21,11 @@ export default async function FormResponsesPage({
 
   if (!form) notFound();
 
-  const { data: responses } = await supabase!
+  const { data: responses } = (await supabase!
     .from("form_responses")
     .select("*")
     .eq("form_id", formId)
-    .order("submitted_at", { ascending: false });
+    .order("submitted_at", { ascending: false })) as { data: any[] | null };
 
   const fields = (form.fields_json as Array<{ id: string; label: string; type: string }>) || [];
   const inputFields = fields.filter((f) => f.type !== "section_header" && f.type !== "image_banner");
@@ -57,7 +58,7 @@ export default async function FormResponsesPage({
               </tr>
             </thead>
             <tbody>
-              {responses.map((resp, idx) => {
+              {responses.map((resp: any, idx: number) => {
                 const data = resp.data_json as Record<string, unknown>;
                 return (
                   <tr key={resp.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>

@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireApprovedOrganizer } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import Link from "next/link";
 
 export default async function DashboardPage() {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
 
   // Fetch stats scoped to organizer
   const { count: totalEvents } = await supabase!.from("events").select("*", { count: "exact", head: true }).eq("organizer_id", user.id);
@@ -13,12 +14,12 @@ export default async function DashboardPage() {
   const { count: totalForms } = await supabase!.from("forms").select("*", { count: "exact", head: true }).eq("organizer_id", user.id);
 
   // Recent events
-  const { data: recentEvents } = await supabase!
+  const { data: recentEvents } = (await supabase!
     .from("events")
     .select("*")
     .eq("organizer_id", user.id)
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(5)) as { data: any[] | null };
 
   const stats = [
     { label: "Total Events", value: totalEvents ?? 0, icon: "📅", color: "#818cf8" },
@@ -83,7 +84,7 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {recentEvents.map((event) => (
+              {recentEvents.map((event: any) => (
                 <Link key={event.id} href={`/dashboard/events/${event.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderRadius: "10px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", transition: "all 0.2s" }}>
                   <div>
                     <p className="font-semibold" style={{ marginBottom: "2px" }}>{event.name}</p>

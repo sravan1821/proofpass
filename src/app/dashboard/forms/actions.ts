@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { requireApprovedOrganizer } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -8,7 +8,7 @@ import { DEFAULT_FORM_SETTINGS } from "@/lib/form-builder/types";
 
 export async function createFormAction(formData: FormData) {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const title = formData.get("title") as string;
@@ -34,7 +34,7 @@ export async function createFormAction(formData: FormData) {
 
 export async function saveFormAction(formId: string, fieldsJson: unknown[], settingsJson: unknown) {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -55,7 +55,7 @@ export async function saveFormAction(formId: string, fieldsJson: unknown[], sett
 
 export async function updateFormMetaAction(formId: string, title: string, description: string) {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -72,7 +72,7 @@ export async function updateFormMetaAction(formId: string, title: string, descri
 
 export async function publishFormAction(formId: string) {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -90,7 +90,7 @@ export async function publishFormAction(formId: string) {
 
 export async function closeFormAction(formId: string) {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   const { error } = await supabase
@@ -107,7 +107,7 @@ export async function closeFormAction(formId: string) {
 }
 
 export async function submitFormResponseAction(shareId: string, data: Record<string, unknown>) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
   // Get form by share ID

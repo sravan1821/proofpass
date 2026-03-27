@@ -1,16 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireApprovedOrganizer } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import Link from "next/link";
 
 export default async function FormsListPage() {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
 
-  const { data: forms } = await supabase!
+  const { data: forms } = (await supabase!
     .from("forms")
     .select("*")
     .eq("organizer_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })) as { data: any[] | null };
 
   const statusBadge: Record<string, string> = {
     draft: "badge-neutral",
@@ -40,7 +41,7 @@ export default async function FormsListPage() {
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "16px" }}>
-          {forms.map((form) => (
+          {forms.map((form: any) => (
             <div key={form.id} className="glass-card glass-card-hover" style={{ padding: "24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
                 <h3 className="font-bold" style={{ fontSize: "1.05rem" }}>{form.title}</h3>

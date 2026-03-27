@@ -1,21 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireApprovedOrganizer } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import Link from "next/link";
 
 export default async function EventsListPage() {
   const user = await requireApprovedOrganizer();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
 
   // Fetch all events for this organizer
-  const { data: events } = await supabase!
+  const { data: events } = (await supabase!
     .from("events")
     .select("*")
     .eq("organizer_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })) as { data: any[] | null };
 
   // Get registration counts
   const regCounts: Record<string, number> = {};
-  for (const event of events || []) {
+  for (const event of (events || []) as any[]) {
     const { count } = await supabase!
       .from("event_registrations")
       .select("*", { count: "exact", head: true })
@@ -25,7 +26,7 @@ export default async function EventsListPage() {
 
   // Get winner counts per event
   const winnerCounts: Record<string, number> = {};
-  for (const event of events || []) {
+  for (const event of (events || []) as any[]) {
     const { count } = await supabase!
       .from("participants")
       .select("*", { count: "exact", head: true })
@@ -35,8 +36,8 @@ export default async function EventsListPage() {
   }
 
   const now = new Date();
-  const activeEvents = (events || []).filter((e) => new Date(e.end_date || e.start_date) >= now);
-  const pastEvents = (events || []).filter((e) => new Date(e.end_date || e.start_date) < now);
+  const activeEvents = (events || []).filter((e: any) => new Date(e.end_date || e.start_date) >= now);
+  const pastEvents = (events || []).filter((e: any) => new Date(e.end_date || e.start_date) < now);
 
   const totalRegistrations = Object.values(regCounts).reduce((a, b) => a + b, 0);
   const totalWinners = Object.values(winnerCounts).reduce((a, b) => a + b, 0);

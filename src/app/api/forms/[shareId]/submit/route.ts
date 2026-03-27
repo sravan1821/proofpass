@@ -1,24 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createSupabaseServerClient } from "@/lib/db/supabase/server";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ shareId: string }> }
 ) {
   const { shareId } = await params;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) {
     return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
   }
-
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() { return request.cookies.getAll(); },
-      setAll() {},
-    },
-  });
 
   const body = await request.json();
   const data = body.data;

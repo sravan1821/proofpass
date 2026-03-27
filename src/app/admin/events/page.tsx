@@ -1,20 +1,21 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireAdmin } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-provider";
 
 export default async function AdminEventsPage() {
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
 
   // Fetch all events with organizer info and registration count
-  const { data: events } = await supabase!
+  const { data: events } = (await supabase!
     .from("events")
     .select("*, profiles!events_organizer_id_fkey(full_name, org_name, email)")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })) as { data: any[] | null };
 
   // Get registration counts per event
-  const eventIds = (events || []).map((e) => e.id);
+  const eventIds = (events || []).map((e: any) => e.id);
   const regCounts: Record<string, number> = {};
   if (eventIds.length > 0) {
     for (const eid of eventIds) {
@@ -26,9 +27,9 @@ export default async function AdminEventsPage() {
     }
   }
 
-  const pendingEvents = (events || []).filter((e) => e.admin_approval === "pending");
-  const approvedEvents = (events || []).filter((e) => e.admin_approval === "approved");
-  const rejectedEvents = (events || []).filter((e) => e.admin_approval === "rejected");
+  const pendingEvents = (events || []).filter((e: any) => e.admin_approval === "pending");
+  const approvedEvents = (events || []).filter((e: any) => e.admin_approval === "approved");
+  const rejectedEvents = (events || []).filter((e: any) => e.admin_approval === "rejected");
 
   const approvalBadge = (status: string) => {
     const map: Record<string, string> = { pending: "badge-warning", approved: "badge-success", rejected: "badge-danger" };
