@@ -1,18 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #070b17;
-  --foreground: #eef2ff;
-  --surface: #0e1528;
-  --surface-2: #0a1020;
-  --surface-3: #131b2e;
-  --primary: #4f46e5;
-  --primary-strong: #4338ca;
-  --primary-soft: #a5b4fc;
-  --muted-foreground: #94a3b8;
-  --ring: #818cf8;
-  --border: #1e293b;
-  --border-light: #334155;
+  --background: #07101f;
+  --foreground: #eff5ff;
+  --surface: #0d1728;
+  --surface-2: #091120;
+  --surface-3: #111d31;
+  --surface-4: #1a1430;
+  --primary: #5873ff;
+  --primary-strong: #3c56ea;
+  --primary-soft: #8fdcff;
+  --primary-glow: #c084fc;
+  --secondary-glow: #38bdf8;
+  --accent-warm: #ffbf66;
+  --muted-foreground: #9ba9c4;
+  --ring: #8fdcff;
+  --border: #1f3047;
+  --border-light: #30445f;
 
   /* Status colors */
   --success: #10b981;
@@ -58,8 +62,10 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top, rgba(79, 70, 229, 0.18), transparent 30%),
-    linear-gradient(180deg, #060816 0%, #070b17 42%, #091121 100%);
+    radial-gradient(circle at top left, rgba(94, 182, 255, 0.14), transparent 24%),
+    radial-gradient(circle at top right, rgba(255, 190, 96, 0.1), transparent 22%),
+    radial-gradient(circle at center top, rgba(109, 87, 255, 0.14), transparent 36%),
+    linear-gradient(180deg, #06101d 0%, #07101f 36%, #091425 100%);
   color: var(--foreground);
   font-family: var(--font-space-grotesk), sans-serif;
 }
@@ -82,32 +88,49 @@ button {
 
 p,
 li {
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-space-grotesk), sans-serif;
 }
 
 /* ── Glassmorphism Card ── */
 .glass-card {
-  background: rgba(14, 21, 40, 0.65);
-  backdrop-filter: blur(16px);
+  background: rgba(12, 21, 38, 0.72);
+  backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(99, 102, 241, 0.12);
-  border-radius: 16px;
+  border: 1px solid rgba(143, 220, 255, 0.12);
+  border-radius: 22px;
+  box-shadow: 0 24px 80px rgba(3, 8, 24, 0.28);
 }
 
 .glass-card-hover:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 0 30px rgba(79, 70, 229, 0.12);
+  border-color: rgba(143, 220, 255, 0.28);
+  box-shadow: 0 24px 90px rgba(36, 78, 201, 0.18);
   transform: translateY(-2px);
   transition: all 0.3s ease;
+}
+
+.surface-grid {
+  position: relative;
+}
+
+.surface-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent);
 }
 
 /* ── Form Inputs ── */
 .input-field {
   width: 100%;
   padding: 12px 16px;
-  background: rgba(14, 21, 40, 0.8);
+  background: rgba(10, 18, 34, 0.84);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 16px;
   color: var(--foreground);
   font-size: 0.95rem;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -115,8 +138,8 @@ li {
 }
 
 .input-field:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  border-color: var(--primary-soft);
+  box-shadow: 0 0 0 3px rgba(143, 220, 255, 0.15);
 }
 
 .input-field::placeholder {
@@ -136,20 +159,21 @@ li {
   justify-content: center;
   gap: 8px;
   padding: 12px 24px;
-  background: var(--primary);
+  background: linear-gradient(135deg, #5b76ff 0%, #4566ff 55%, #3d53d9 100%);
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: 999px;
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
+  box-shadow: 0 18px 45px rgba(61, 86, 255, 0.28);
   transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
-  background: var(--primary-strong);
+  background: linear-gradient(135deg, #6580ff 0%, #4e68ff 55%, #4156d6 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 22px 55px rgba(61, 86, 255, 0.34);
 }
 
 .btn-primary:disabled {
@@ -164,10 +188,10 @@ li {
   justify-content: center;
   gap: 8px;
   padding: 12px 24px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.06);
   color: var(--foreground);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
@@ -175,8 +199,9 @@ li {
 }
 
 .btn-secondary:hover {
-  border-color: var(--primary);
-  color: var(--primary-soft);
+  border-color: rgba(143, 220, 255, 0.36);
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .btn-danger {
@@ -292,6 +317,38 @@ li {
   50% { box-shadow: 0 0 20px rgba(79, 70, 229, 0.3); }
 }
 
+@keyframes hero-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gentle-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes subtle-pan {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
 .animate-fade-in {
   animation: fadeInUp 0.5s ease forwards;
 }
@@ -304,6 +361,18 @@ li {
 
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-hero-reveal {
+  animation: hero-reveal 0.75s ease forwards;
+}
+
+.animate-gentle-float {
+  animation: gentle-float 5s ease-in-out infinite;
+}
+
+.animate-subtle-pan {
+  animation: subtle-pan 7s ease-in-out infinite;
 }
 
 /* ── Scrollbar ── */
