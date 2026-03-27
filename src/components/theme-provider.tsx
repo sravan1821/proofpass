@@ -13,27 +13,22 @@ const ThemeContext = createContext<{
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
-  const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") {
+      return "dark";
+    }
+
+    const stored = localStorage.getItem("proofpass-theme");
+    return stored === "light" || stored === "dark" ? stored : "dark";
+  });
 
   useEffect(() => {
-    setMounted(true);
-    const stored = localStorage.getItem("proofpass-theme") as Theme | null;
-    if (stored) {
-      setTheme(stored);
-      document.documentElement.setAttribute("data-theme", stored);
-    }
-  }, []);
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("proofpass-theme", theme);
+  }, [theme]);
 
   function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    localStorage.setItem("proofpass-theme", next);
-    document.documentElement.setAttribute("data-theme", next);
-  }
-
-  if (!mounted) {
-    return <>{children}</>;
+    setTheme((current) => (current === "dark" ? "light" : "dark"));
   }
 
   return (

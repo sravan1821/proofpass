@@ -1,8 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/db/supabase/server";
 import Link from "next/link";
+import { EventRecord } from "./types";
 
-// Sample events displayed when database is not configured
-const SAMPLE_EVENTS = [
+const SAMPLE_EVENTS: EventRecord[] = [
   {
     id: "demo-1",
     slug: "techfest-2026",
@@ -92,8 +92,8 @@ const SAMPLE_EVENTS = [
 ];
 
 export default async function PublicEventsPage() {
-  let events = SAMPLE_EVENTS;
-  let regCounts: Record<string, number> = {};
+  let events: EventRecord[] = SAMPLE_EVENTS;
+  const regCounts: Record<string, number> = {};
   let isDemo = true;
 
   const supabase = await createSupabaseServerClient();
@@ -106,7 +106,7 @@ export default async function PublicEventsPage() {
       .order("start_date", { ascending: true });
 
     if (data && data.length > 0) {
-      events = data;
+      events = data as EventRecord[];
       isDemo = false;
 
       for (const event of events) {
@@ -120,8 +120,9 @@ export default async function PublicEventsPage() {
   }
 
   const now = new Date();
-  const upcoming = events.filter((e: any) => new Date((e as any).end_date || (e as any).start_date) >= now);
-  const past = events.filter((e: any) => new Date((e as any).end_date || (e as any).start_date) < now);
+  const getEventDate = (event: EventRecord) => new Date(event.end_date || event.start_date || "");
+  const upcoming = events.filter((event) => getEventDate(event) >= now);
+  const past = events.filter((event) => getEventDate(event) < now);
 
   const categoryColors: Record<string, string> = {
     hackathon: "#818cf8",
@@ -135,7 +136,6 @@ export default async function PublicEventsPage() {
 
   return (
     <div style={{ minHeight: "100vh" }}>
-      {/* Nav */}
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderBottom: "1px solid var(--glass-border)", background: "var(--glass-bg)" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Link href="/" className="flex items-center gap-3">
@@ -150,38 +150,35 @@ export default async function PublicEventsPage() {
         </div>
       </nav>
 
-      {/* Hero */}
       <section style={{ paddingTop: "120px", paddingBottom: "40px", textAlign: "center", position: "relative" }}>
         <div style={{ position: "absolute", top: "0", left: "50%", transform: "translateX(-50%)", width: "600px", height: "400px", background: "radial-gradient(ellipse, rgba(79,70,229,0.15) 0%, transparent 70%)", pointerEvents: "none" }} />
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "0 24px", position: "relative" }}>
           <h1 style={{ fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 800, lineHeight: 1.1, marginBottom: "16px" }}>
-            Discover & Register for{" "}
-            <span style={{ background: "linear-gradient(135deg, #818cf8, #4f46e5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Events</span>
+            Discover & Register for <span style={{ background: "linear-gradient(135deg, #818cf8, #4f46e5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Events</span>
           </h1>
           <p style={{ fontSize: "1.1rem", color: "var(--muted-foreground)", lineHeight: 1.7, marginBottom: "8px" }}>
             Browse verified events from trusted organizers. Register as a <strong style={{ color: "var(--foreground)" }}>participant</strong>, pay via UPI or Card, and get your verified credentials.
           </p>
           <p style={{ fontSize: "0.85rem", color: "var(--primary-soft)", marginBottom: "8px" }}>
-            👤 <strong>Participants:</strong> Click any event below to register &nbsp;|&nbsp; 🏢 <strong>Organizers:</strong> <Link href="/sign-in" style={{ color: "var(--primary-soft)", textDecoration: "underline" }}>Sign in</Link> to create & manage events
+            Participants: <strong>register below</strong> | Organizers: <Link href="/sign-in" style={{ color: "var(--primary-soft)", textDecoration: "underline" }}>Sign in</Link> to create and manage events
           </p>
         </div>
       </section>
 
-      {/* Info Banner */}
       <section style={{ maxWidth: "1100px", margin: "0 auto 28px", padding: "0 24px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <div style={{ padding: "18px 24px", borderRadius: "14px", background: "rgba(79,70,229,0.06)", border: "1px solid rgba(79,70,229,0.12)", display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(79,70,229,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", flexShrink: 0 }}>👤</div>
+            <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(79,70,229,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", flexShrink: 0 }}>P</div>
             <div>
               <p className="font-bold" style={{ fontSize: "0.9rem", marginBottom: "2px" }}>For Participants</p>
-              <p style={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Click on any event → Fill registration form → Pay → Get receipt & credentials</p>
+              <p style={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>Pick an event, submit registration, complete payment if required, and collect your receipt.</p>
             </div>
           </div>
           <div style={{ padding: "18px 24px", borderRadius: "14px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.12)", display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", flexShrink: 0 }}>🏢</div>
+            <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem", flexShrink: 0 }}>O</div>
             <div>
               <p className="font-bold" style={{ fontSize: "0.9rem", marginBottom: "2px" }}>For Event Organizers</p>
-              <p style={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}><Link href="/register" style={{ color: "var(--success)", textDecoration: "underline" }}>Register</Link> your org → Get admin approval → Create events → Issue certificates</p>
+              <p style={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}><Link href="/register" style={{ color: "var(--success)", textDecoration: "underline" }}>Register</Link>, get approved, create events, and issue certificates.</p>
             </div>
           </div>
         </div>
@@ -190,7 +187,7 @@ export default async function PublicEventsPage() {
       {isDemo && (
         <section style={{ maxWidth: "1100px", margin: "0 auto 20px", padding: "0 24px" }}>
           <div style={{ padding: "12px 20px", borderRadius: "10px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", display: "flex", alignItems: "center", gap: "10px" }}>
-            <span>⚠️</span>
+            <span>!</span>
             <p style={{ fontSize: "0.8rem", color: "var(--warning)" }}>
               Showing sample events. <Link href="/register" style={{ color: "var(--warning)", textDecoration: "underline" }}>Connect Supabase</Link> or create events from the organizer dashboard to see real events.
             </p>
@@ -198,18 +195,17 @@ export default async function PublicEventsPage() {
         </section>
       )}
 
-      {/* Upcoming Events */}
       <section style={{ maxWidth: "1100px", margin: "0 auto 60px", padding: "0 24px" }}>
-        <h2 className="font-bold" style={{ fontSize: "1.3rem", marginBottom: "24px" }}>📅 Upcoming Events ({upcoming.length})</h2>
+        <h2 className="font-bold" style={{ fontSize: "1.3rem", marginBottom: "24px" }}>Upcoming Events ({upcoming.length})</h2>
         {upcoming.length === 0 ? (
           <div className="glass-card" style={{ padding: "48px", textAlign: "center" }}>
             <p style={{ color: "var(--muted-foreground)" }}>No upcoming events at the moment. Check back soon!</p>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "20px" }}>
-            {upcoming.map((event: any) => {
-              const advantages = (event.advantages as string[]) || [];
-              const catColor = categoryColors[(event.category as string)?.toLowerCase()] || "#6b7280";
+            {upcoming.map((event) => {
+              const advantages = event.advantages || [];
+              const catColor = categoryColors[event.category?.toLowerCase() || "other"] || categoryColors.other;
               return (
                 <Link
                   key={event.id}
@@ -217,7 +213,6 @@ export default async function PublicEventsPage() {
                   className="glass-card glass-card-hover"
                   style={{ padding: "0", overflow: "hidden", display: "block", cursor: "pointer" }}
                 >
-                  {/* Category color bar */}
                   <div style={{ height: "4px", background: `linear-gradient(90deg, ${catColor}, ${catColor}88)` }} />
                   <div style={{ padding: "22px 24px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
@@ -229,35 +224,35 @@ export default async function PublicEventsPage() {
                       </span>
                     </div>
                     <h3 className="font-bold" style={{ fontSize: "1.15rem", marginBottom: "8px" }}>{event.name}</h3>
-                    <p style={{ fontSize: "0.82rem", color: "var(--muted-foreground)", marginBottom: "14px", lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden" }}>
+                    <p style={{ fontSize: "0.82rem", color: "var(--muted-foreground)", marginBottom: "14px", lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>
                       {event.description || ""}
                     </p>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
-                        <span>📅</span>
+                        <span>Date</span>
                         <span>{event.start_date ? new Date(event.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "TBA"}</span>
                         {event.end_date && event.end_date !== event.start_date && (
-                          <span>– {new Date(event.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                          <span>- {new Date(event.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
                         )}
                       </div>
                       {event.event_time && (
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
-                          <span>🕐</span><span>{event.event_time}</span>
+                          <span>Time</span><span>{event.event_time}</span>
                         </div>
                       )}
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
-                        <span>📍</span><span>{event.venue_details || event.venue || "Online"}</span>
+                        <span>Venue</span><span>{event.venue_details || event.venue || "Online"}</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
-                        <span>🏢</span><span>{event.org_name_display || (event.profiles as any)?.org_name || (event.profiles as any)?.full_name || "Organizer"}</span>
+                        <span>Org</span><span>{event.org_name_display || event.profiles?.org_name || event.profiles?.full_name || "Organizer"}</span>
                       </div>
                     </div>
 
                     {advantages.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
-                        {advantages.slice(0, 3).map((a: string, i: number) => (
-                          <span key={i} style={{ padding: "3px 10px", borderRadius: "16px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", fontSize: "0.7rem", color: "var(--success)" }}>✓ {a}</span>
+                        {advantages.slice(0, 3).map((advantage, index) => (
+                          <span key={index} style={{ padding: "3px 10px", borderRadius: "16px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", fontSize: "0.7rem", color: "var(--success)" }}>{advantage}</span>
                         ))}
                         {advantages.length > 3 && (
                           <span style={{ padding: "3px 10px", fontSize: "0.7rem", color: "var(--muted-foreground)" }}>+{advantages.length - 3} more</span>
@@ -280,16 +275,15 @@ export default async function PublicEventsPage() {
         )}
       </section>
 
-      {/* Past Events */}
       {past.length > 0 && (
         <section style={{ maxWidth: "1100px", margin: "0 auto 60px", padding: "0 24px" }}>
-          <h2 className="font-bold" style={{ fontSize: "1.3rem", marginBottom: "24px", color: "var(--muted-foreground)" }}>📋 Past Events ({past.length})</h2>
+          <h2 className="font-bold" style={{ fontSize: "1.3rem", marginBottom: "24px", color: "var(--muted-foreground)" }}>Past Events ({past.length})</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "20px" }}>
-            {past.map((event: any) => (
+            {past.map((event) => (
               <div key={event.id} className="glass-card" style={{ padding: "24px", opacity: 0.7 }}>
                 <h3 className="font-bold" style={{ marginBottom: "4px" }}>{event.name}</h3>
                 <p style={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>
-                  {event.start_date ? new Date(event.start_date).toLocaleDateString() : "—"} • {event.category || "Event"} • {regCounts[event.id] || 0} registered
+                  {event.start_date ? new Date(event.start_date).toLocaleDateString() : "-"} • {event.category || "Event"} • {regCounts[event.id] || 0} registered
                 </p>
               </div>
             ))}
@@ -297,7 +291,6 @@ export default async function PublicEventsPage() {
         </section>
       )}
 
-      {/* Footer */}
       <footer style={{ borderTop: "1px solid var(--border)", padding: "32px 24px" }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
           <div className="flex items-center gap-2">

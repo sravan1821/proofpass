@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { confirmPaymentAction } from "../../actions";
@@ -113,7 +114,7 @@ export default function PaymentPageClient({ event, registration }: PaymentPageCl
               <p style={{ fontSize: "0.85rem", color: "var(--muted-foreground)", marginBottom: "16px" }}>Scan this QR code to pay via UPI</p>
               <div style={{ width: "220px", height: "220px", margin: "0 auto", background: "#fff", borderRadius: "14px", padding: "14px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
                 {/* QR Code generated from UPI URL */}
-                <img
+                <Image
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=192x192&data=${encodeURIComponent(upiUrl)}&margin=0`}
                   alt="UPI QR Code"
                   width={192}
