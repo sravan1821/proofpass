@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Certificate & Portfolio — ProofPass</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">
+        <div class="logo-icon"><i class="fas fa-shield-halved"></i></div>
+        <span>Proof<span class="logo-accent">Pass</span></span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="issue.html">Issue</a></li>
+        <li><a href="verify.html">Verify</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="verify.html" class="btn btn-primary btn-sm">Verify</a>
+        <button class="hamburger" id="hamburger">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- CERTIFICATE + PORTFOLIO PAGE -->
+  <section class="page-section">
+    <div class="container">
+
+      <!-- Verified Banner -->
+      <div class="verified-banner animate-fade-down" id="verifiedBanner">
+        <div class="verified-icon pulse-green">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="verified-text">
+          <h3>This Certificate is Verified</h3>
+          <p>Issued and verified through ProofPass secure infrastructure</p>
+        </div>
+        <div class="verified-id" id="certPageID">PP-7A3B2F</div>
+      </div>
+
+      <!-- Certificate Display -->
+      <div class="cert-display animate-fade-up delay-1">
+        <div class="cert-full-card">
+          <div class="cert-watermark">PROOFPASS</div>
+          <div class="cert-f-header">
+            <div class="cert-f-logo">
+              <i class="fas fa-shield-halved"></i>
+              <span>ProofPass</span>
+            </div>
+            <div class="cert-f-badge winner">
+              <i class="fas fa-trophy"></i> Winner
+            </div>
+          </div>
+          <div class="cert-f-body">
+            <p class="cert-f-subtitle">Certificate of Achievement</p>
+            <h1 class="cert-f-name" id="certName">Rahul Sharma</h1>
+            <div class="cert-f-divider"></div>
+            <p class="cert-f-detail">
+              <i class="fas fa-calendar"></i>
+              <span id="certEvent">JNTU Hackathon 2025</span>
+            </p>
+            <p class="cert-f-detail">
+              <i class="fas fa-code"></i>
+              <span id="certProject">Project: ProofPass</span>
+            </p>
+            <p class="cert-f-detail">
+              <i class="fas fa-building"></i>
+              <span id="certIssuer">Department of CSE, JNTUH</span>
+            </p>
+            <p class="cert-f-detail">
+              <i class="fas fa-calendar-check"></i>
+              <span id="certDate">January 15, 2025</span>
+            </p>
+          </div>
+          <div class="cert-f-footer">
+            <div class="cert-f-qr" id="certQR">
+              <i class="fas fa-qrcode" style="font-size:60px; color:#6366f1"></i>
+            </div>
+            <div class="cert-f-sign">
+              <div class="signature-line"></div>
+              <p>Authorized Signatory</p>
+            </div>
+          </div>
+          <div class="cert-shine"></div>
+        </div>
+        <div class="cert-actions">
+          <button class="btn btn-primary"><i class="fas fa-download"></i> Download</button>
+          <button class="btn btn-outline" onclick="shareLinkedIn()"><i class="fab fa-linkedin"></i> Share on LinkedIn</button>
+          <button class="btn btn-outline"><i class="fas fa-share"></i> Copy Link</button>
+        </div>
+      </div>
+
+      <!-- PORTFOLIO SECTION -->
+      <div class="portfolio-section animate-fade-up delay-2">
+        <div class="section-header">
+          <span class="section-tag">Portfolio</span>
+          <h2>Project Profile</h2>
+        </div>
+
+        <div class="portfolio-grid">
+          <!-- Project Info -->
+          <div class="portfolio-card main-card">
+            <div class="portfolio-card-header">
+              <h3><i class="fas fa-rocket"></i> ProofPass</h3>
+              <span class="portfolio-badge">🏆 Winner</span>
+            </div>
+            <p class="portfolio-desc" id="portfolioDesc">
+              A QR-verifiable hackathon certificate and project portfolio platform. 
+              Issue tamper-proof digital certificates, verify them instantly with QR codes, 
+              and showcase project details through mini portfolio pages. Built for hackathons, 
+              education, and institutional use cases.
+            </p>
+            <div class="tech-tags" id="techTags">
+              <span class="tech-tag">HTML5</span>
+              <span class="tech-tag">CSS3</span>
+              <span class="tech-tag">JavaScript</span>
+              <span class="tech-tag">Python</span>
+              <span class="tech-tag">Firebase</span>
+              <span class="tech-tag">QR Code API</span>
+            </div>
+          </div>
+
+          <!-- Team -->
+          <div class="portfolio-card">
+            <h3><i class="fas fa-users"></i> Team Members</h3>
+            <div class="team-list">
+              <div class="team-member">
+                <div class="member-avatar" style="background:#6366f1">RS</div>
+                <div class="member-info">
+                  <span class="member-name">Rahul Sharma</span>
+                  <span class="member-role">Full Stack Developer</span>
+                </div>
+              </div>
+              <div class="team-member">
+                <div class="member-avatar" style="background:#ec4899">PR</div>
+                <div class="member-info">
+                  <span class="member-name">Priya Reddy</span>
+                  <span class="member-role">UI/UX Designer</span>
+                </div>
+              </div>
+              <div class="team-member">
+                <div class="member-avatar" style="background:#10b981">AK</div>
+                <div class="member-info">
+                  <span class="member-name">Arun Kumar</span>
+                  <span class="member-role">Backend Developer</span>
+                </div>
+              </div>
+              <div class="team-member">
+                <div class="member-avatar" style="background:#f59e0b">SN</div>
+                <div class="member-info">
+                  <span class="member-name">Sneha Nair</span>
+                  <span class="member-role">ML Engineer</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Links -->
+          <div class="portfolio-card">
+            <h3><i class="fas fa-link"></i> Project Links</h3>
+            <div class="project-links">
+              <a href="#" class="project-link-item">
+                <i class="fab fa-github"></i>
+                <span>GitHub Repository</span>
+                <i class="fas fa-external-link"></i>
+              </a>
+              <a href="#" class="project-link-item">
+                <i class="fas fa-globe"></i>
+                <span>Live Demo</span>
+                <i class="fas fa-external-link"></i>
+              </a>
+              <a href="#" class="project-link-item">
+                <i class="fab fa-youtube"></i>
+                <span>Demo Video</span>
+                <i class="fas fa-external-link"></i>
+              </a>
+              <a href="#" class="project-link-item">
+                <i class="fas fa-file-powerpoint"></i>
+                <span>Presentation</span>
+                <i class="fas fa-external-link"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Highlights -->
+          <div class="portfolio-card">
+            <h3><i class="fas fa-star"></i> Highlights</h3>
+            <div class="highlights-list">
+              <div class="highlight-item">
+                <div class="highlight-icon"><i class="fas fa-trophy"></i></div>
+                <span>1st Place — JNTU Hackathon 2025</span>
+              </div>
+              <div class="highlight-item">
+                <div class="highlight-icon"><i class="fas fa-certificate"></i></div>
+                <span>12,847+ Certificates Issued</span>
+              </div>
+              <div class="highlight-item">
+                <div class="highlight-icon"><i class="fas fa-bolt"></i></div>
+                <span>Built in 36 hours</span>
+              </div>
+              <div class="highlight-item">
+                <div class="highlight-icon"><i class="fas fa-handshake"></i></div>
+                <span>Incubation Interest from T-Hub</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>&copy; 2025 ProofPass. Verified Certificate & Portfolio Page.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

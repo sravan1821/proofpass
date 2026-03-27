@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Verify Certificate — ProofPass</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">
+        <div class="logo-icon"><i class="fas fa-shield-halved"></i></div>
+        <span>Proof<span class="logo-accent">Pass</span></span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="issue.html">Issue</a></li>
+        <li><a href="verify.html" class="active">Verify</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="issue.html" class="btn btn-primary btn-sm">Issue</a>
+        <button class="hamburger" id="hamburger">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- VERIFY PAGE -->
+  <section class="page-section">
+    <div class="container">
+      <div class="page-header animate-fade-up">
+        <span class="section-tag">Verify</span>
+        <h1>Verify a Certificate</h1>
+        <p>Enter a Certificate ID or scan a QR code to verify authenticity</p>
+      </div>
+
+      <div class="verify-layout">
+        <!-- VERIFY INPUT -->
+        <div class="verify-card animate-fade-up delay-1">
+          <div class="verify-tabs">
+            <button class="verify-tab active" data-tab="manual">
+              <i class="fas fa-keyboard"></i> Enter ID
+            </button>
+            <button class="verify-tab" data-tab="scan">
+              <i class="fas fa-camera"></i> Scan QR
+            </button>
+          </div>
+
+          <!-- Manual Entry -->
+          <div class="verify-tab-content active" id="tab-manual">
+            <div class="form-group">
+              <label>Certificate ID</label>
+              <div class="input-with-icon">
+                <i class="fas fa-search"></i>
+                <input type="text" id="verifyInput" placeholder="PP-XXXXXX"/>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-lg btn-full" onclick="verifyCertificate()">
+              <i class="fas fa-shield-halved"></i> Verify Certificate
+            </button>
+          </div>
+
+          <!-- QR Scan -->
+          <div class="verify-tab-content" id="tab-scan">
+            <div class="qr-scanner-area">
+              <div class="scanner-frame">
+                <div class="scan-corner tl"></div>
+                <div class="scan-corner tr"></div>
+                <div class="scan-corner bl"></div>
+                <div class="scan-corner br"></div>
+                <div class="scan-line"></div>
+                <i class="fas fa-qrcode scanner-placeholder-icon"></i>
+              </div>
+              <p class="scanner-hint">Position QR code within the frame</p>
+              <button class="btn btn-primary" onclick="simulateScan()">
+                <i class="fas fa-play"></i> Simulate QR Scan
+              </button>
+            </div>
+          </div>
+
+          <!-- Recent Verifications -->
+          <div class="recent-verifications">
+            <h4><i class="fas fa-clock-rotate-left"></i> Recent Verifications</h4>
+            <div class="recent-list" id="recentList">
+              <div class="recent-item">
+                <div class="recent-status valid">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="recent-info">
+                  <span class="recent-id">PP-7A3B2F</span>
+                  <span class="recent-name">Rahul Sharma</span>
+                </div>
+                <span class="recent-time">2 min ago</span>
+              </div>
+              <div class="recent-item">
+                <div class="recent-status valid">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="recent-info">
+                  <span class="recent-id">PP-9D4E1C</span>
+                  <span class="recent-name">Priya Reddy</span>
+                </div>
+                <span class="recent-time">5 min ago</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VERIFICATION RESULT -->
+        <div class="verify-result" id="verifyResult">
+          <div class="result-placeholder animate-fade-up delay-2">
+            <div class="placeholder-icon">
+              <i class="fas fa-shield-halved"></i>
+            </div>
+            <h3>Verification Result</h3>
+            <p>Enter a Certificate ID or scan a QR code to see the verification result here.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

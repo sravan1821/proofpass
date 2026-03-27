@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — ProofPass</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">
+        <div class="logo-icon"><i class="fas fa-shield-halved"></i></div>
+        <span>Proof<span class="logo-accent">Pass</span></span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="issue.html">Issue</a></li>
+        <li><a href="verify.html">Verify</a></li>
+        <li><a href="dashboard.html" class="active">Dashboard</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="issue.html" class="btn btn-primary btn-sm">+ Issue</a>
+        <button class="hamburger" id="hamburger">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <section class="page-section">
+    <div class="container">
+      <div class="page-header animate-fade-up">
+        <span class="section-tag">Dashboard</span>
+        <h1>Admin Overview</h1>
+        <p>Track certificates, verifications, and activity</p>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="dash-stats animate-fade-up delay-1">
+        <div class="dash-stat-card">
+          <div class="dash-stat-icon icon-blue">
+            <i class="fas fa-certificate"></i>
+          </div>
+          <div class="dash-stat-info">
+            <span class="dash-stat-number" data-target="1284">0</span>
+            <span class="dash-stat-label">Total Issued</span>
+          </div>
+          <div class="dash-stat-trend up">
+            <i class="fas fa-arrow-up"></i> 12%
+          </div>
+        </div>
+        <div class="dash-stat-card">
+          <div class="dash-stat-icon icon-green">
+            <i class="fas fa-check-double"></i>
+          </div>
+          <div class="dash-stat-info">
+            <span class="dash-stat-number" data-target="3426">0</span>
+            <span class="dash-stat-label">Verifications</span>
+          </div>
+          <div class="dash-stat-trend up">
+            <i class="fas fa-arrow-up"></i> 24%
+          </div>
+        </div>
+        <div class="dash-stat-card">
+          <div class="dash-stat-icon icon-orange">
+            <i class="fas fa-building"></i>
+          </div>
+          <div class="dash-stat-info">
+            <span class="dash-stat-number" data-target="48">0</span>
+            <span class="dash-stat-label">Organizations</span>
+          </div>
+          <div class="dash-stat-trend up">
+            <i class="fas fa-arrow-up"></i> 8%
+          </div>
+        </div>
+        <div class="dash-stat-card">
+          <div class="dash-stat-icon icon-purple">
+            <i class="fas fa-eye"></i>
+          </div>
+          <div class="dash-stat-info">
+            <span class="dash-stat-number" data-target="892">0</span>
+            <span class="dash-stat-label">Portfolio Views</span>
+          </div>
+          <div class="dash-stat-trend up">
+            <i class="fas fa-arrow-up"></i> 32%
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="dash-table-card animate-fade-up delay-2">
+        <div class="table-header">
+          <h3><i class="fas fa-list"></i> Recent Certificates</h3>
+          <div class="table-actions">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" placeholder="Search certificates..." id="searchInput"/>
+            </div>
+            <a href="issue.html" class="btn btn-primary btn-sm">
+              <i class="fas fa-plus"></i> New
+            </a>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th>Cert ID</th>
+                <th>Name</th>
+                <th>Event</th>
+                <th>Project</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="certTableBody">
+              <tr>
+                <td><code>PP-7A3B2F</code></td>
+                <td>
+                  <div class="table-user">
+                    <div class="table-avatar" style="background:#6366f1">RS</div>
+                    Rahul Sharma
+                  </div>
+                </td>
+                <td>JNTU Hackathon 2025</td>
+                <td>ProofPass</td>
+                <td><span class="role-badge winner">Winner</span></td>
+                <td><span class="status-badge active">Active</span></td>
+                <td>
+                  <div class="table-actions-cell">
+                    <button class="icon-btn" title="View"><i class="fas fa-eye"></i></button>
+                    <button class="icon-btn" title="Share"><i class="fas fa-share"></i></button>
+                    <button class="icon-btn danger" title="Revoke"><i class="fas fa-ban"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><code>PP-9D4E1C</code></td>
+                <td>
+                  <div class="table-user">
+                    <div class="table-avatar" style="background:#ec4899">PR</div>
+                    Priya Reddy
+                  </div>
+                </td>
+                <td>JNTU Hackathon 2025</td>
+                <td>EcoTrack</td>
+                <td><span class="role-badge runner">Runner Up</span></td>
+                <td><span class="status-badge active">Active</span></td>
+                <td>
+                  <div class="table-actions-cell">
+                    <button class="icon-btn" title="View"><i class="fas fa-eye"></i></button>
+                    <button class="icon-btn" title="Share"><i class="fas fa-share"></i></button>
+                    <button class="icon-btn danger" title="Revoke"><i class="fas fa-ban"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><code>PP-2F8G5H</code></td>
+                <td>
+                  <div class="table-user">
+                    <div class="table-avatar" style="background:#10b981">AK</div>
+                    Arun Kumar
+                  </div>
+                </td>
+                <td>Code Sprint 2025</td>
+                <td>HealthBot</td>
+                <td><span class="role-badge participant">Participant</span></td>
+                <td><span class="status-badge active">Active</span></td>
+                <td>
+                  <div class="table-actions-cell">
+                    <button class="icon-btn" title="View"><i class="fas fa-eye"></i></button>
+                    <button class="icon-btn" title="Share"><i class="fas fa-share"></i></button>
+                    <button class="icon-btn danger" title="Revoke"><i class="fas fa-ban"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><code>PP-5K2L9M</code></td>
+                <td>
+                  <div class="table-user">
+                    <div class="table-avatar" style="background:#f59e0b">SN</div>
+                    Sneha Nair
+                  </div>
+                </td>
+                <td>AI Summit 2025</td>
+                <td>SmartFarm</td>
+                <td><span class="role-badge mentor">Mentor</span></td>
+                <td><span class="status-badge revoked">Revoked</span></td>
+                <td>
+                  <div class="table-actions-cell">
+                    <button class="icon-btn" title="View"><i class="fas fa-eye"></i></button>
+                    <button class="icon-btn" title="Share"><i class="fas fa-share"></i></button>
+                    <button class="icon-btn" title="Restore"><i class="fas fa-undo"></i></button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

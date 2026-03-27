@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Issue Certificate — ProofPass</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- NAVBAR (same as index) -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">
+        <div class="logo-icon"><i class="fas fa-shield-halved"></i></div>
+        <span>Proof<span class="logo-accent">Pass</span></span>
+      </a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="issue.html" class="active">Issue</a></li>
+        <li><a href="verify.html">Verify</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="verify.html" class="btn btn-primary btn-sm">Verify</a>
+        <button class="hamburger" id="hamburger">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ISSUE PAGE -->
+  <section class="page-section">
+    <div class="container">
+      <div class="page-header animate-fade-up">
+        <span class="section-tag">Issue</span>
+        <h1>Create New Certificate</h1>
+        <p>Fill in the details below to generate a QR-verifiable certificate</p>
+      </div>
+
+      <div class="issue-layout">
+        <!-- FORM -->
+        <div class="form-card animate-fade-up delay-1">
+          <form id="issueForm">
+            <div class="form-section">
+              <h3><i class="fas fa-user"></i> Participant Details</h3>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Full Name *</label>
+                  <input type="text" id="participantName" placeholder="Rahul Sharma" required/>
+                </div>
+                <div class="form-group">
+                  <label>Email *</label>
+                  <input type="email" id="participantEmail" placeholder="rahul@email.com" required/>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>College / Organization</label>
+                  <input type="text" id="college" placeholder="JNTUH"/>
+                </div>
+                <div class="form-group">
+                  <label>Role</label>
+                  <select id="role">
+                    <option value="participant">Participant</option>
+                    <option value="winner">Winner</option>
+                    <option value="runner-up">Runner Up</option>
+                    <option value="mentor">Mentor</option>
+                    <option value="organizer">Organizer</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h3><i class="fas fa-trophy"></i> Event Details</h3>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Event / Hackathon Name *</label>
+                  <input type="text" id="eventName" placeholder="JNTU Hackathon 2025" required/>
+                </div>
+                <div class="form-group">
+                  <label>Date *</label>
+                  <input type="date" id="eventDate" required/>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Issuing Authority</label>
+                <input type="text" id="issuer" placeholder="Department of CSE, JNTUH"/>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h3><i class="fas fa-code"></i> Project Details (Portfolio)</h3>
+              <div class="form-group">
+                <label>Project Title *</label>
+                <input type="text" id="projectTitle" placeholder="ProofPass" required/>
+              </div>
+              <div class="form-group">
+                <label>Project Description</label>
+                <textarea id="projectDesc" rows="3" placeholder="QR-verifiable certificate platform with mini portfolio pages..."></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Tech Stack</label>
+                  <input type="text" id="techStack" placeholder="HTML, CSS, JS, Python, Firebase"/>
+                </div>
+                <div class="form-group">
+                  <label>GitHub / Demo Link</label>
+                  <input type="url" id="projectLink" placeholder="https://github.com/..."/>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Team Members</label>
+                <input type="text" id="teamMembers" placeholder="Rahul, Priya, Arun, Sneha"/>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg btn-full">
+              <i class="fas fa-certificate"></i> Generate Certificate
+            </button>
+          </form>
+        </div>
+
+        <!-- PREVIEW -->
+        <div class="preview-panel animate-fade-up delay-2">
+          <h3 class="preview-title">
+            <i class="fas fa-eye"></i> Live Preview
+          </h3>
+          <div class="certificate-preview" id="certificatePreview">
+            <div class="cert-preview-card">
+              <div class="cert-watermark">PROOFPASS</div>
+              <div class="cert-p-header">
+                <div class="cert-p-logo">
+                  <i class="fas fa-shield-halved"></i>
+                  <span>ProofPass</span>
+                </div>
+                <div class="cert-p-badge" id="previewBadge">
+                  <i class="fas fa-award"></i> Participant
+                </div>
+              </div>
+              <div class="cert-p-body">
+                <p class="cert-p-subtitle">Certificate of Achievement</p>
+                <h2 class="cert-p-name" id="previewName">Your Name</h2>
+                <div class="cert-p-divider"></div>
+                <p class="cert-p-event" id="previewEvent">Event Name</p>
+                <p class="cert-p-project" id="previewProject">Project: Your Project</p>
+                <p class="cert-p-date" id="previewDate">Date</p>
+                <p class="cert-p-issuer" id="previewIssuer">Issued by: Authority</p>
+              </div>
+              <div class="cert-p-footer">
+                <div class="cert-p-qr" id="previewQR"></div>
+                <div class="cert-p-id" id="previewID">ID: PP-XXXXXX</div>
+              </div>
+              <div class="cert-shine"></div>
+            </div>
+          </div>
+          <div class="preview-actions" id="previewActions" style="display:none;">
+            <button class="btn btn-primary" onclick="downloadCertificate()">
+              <i class="fas fa-download"></i> Download
+            </button>
+            <button class="btn btn-outline" onclick="shareCertificate()">
+              <i class="fas fa-share"></i> Share
+            </button>
+            <a class="btn btn-outline" id="viewPortfolioBtn" href="certificate.html">
+              <i class="fas fa-external-link"></i> View Portfolio
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SUCCESS MODAL -->
+  <div class="modal-overlay" id="successModal">
+    <div class="modal-card">
+      <div class="success-animation">
+        <div class="checkmark-circle">
+          <i class="fas fa-check"></i>
+        </div>
+      </div>
+      <h2>Certificate Issued!</h2>
+      <p>Certificate has been generated successfully with QR verification.</p>
+      <div class="modal-info">
+        <span class="modal-cert-id" id="modalCertID"></span>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="closeModal()">
+          <i class="fas fa-eye"></i> View Certificate
+        </button>
+        <a href="verify.html" class="btn btn-outline">
+          <i class="fas fa-qrcode"></i> Test Verify
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
