@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import { IBM_Plex_Mono, Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-const headingFont = Space_Grotesk({
-  variable: "--font-space-grotesk",
+const bodyFont = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 const monoFont = IBM_Plex_Mono({
@@ -27,7 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${headingFont.variable} ${monoFont.variable} h-full antialiased`}
+      className={`${bodyFont.variable} ${monoFont.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-[color:var(--background)] text-[color:var(--foreground)]">
         <ThemeProvider>{children}</ThemeProvider>

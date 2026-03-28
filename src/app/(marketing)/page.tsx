@@ -1,56 +1,225 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  Award,
   BadgeCheck,
-  FileText,
+  CalendarDays,
+  Clock,
   Layers3,
+  MapPin,
   ScanSearch,
   ShieldCheck,
   Sparkles,
+  Tag,
+  Users,
 } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { QrScanner } from "@/app/verify/qr-scanner";
 
 const verifyHref = "/verify/active-demo-token";
 
 const navItems = [
   { href: "/", label: "Home" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/certificates/new", label: "Issue" },
+  { href: "/events", label: "Events" },
   { href: verifyHref, label: "Verify" },
+  { href: "/sign-in", label: "Login" },
 ];
 
-const stats = [
-  { value: "< 3s", label: "Verification Time" },
-  { value: "99.9%", label: "Uptime SLA" },
-  { value: "14+", label: "Form Field Types" },
-  { value: "3", label: "Certificate Tiers" },
+const sampleEvents = [
+  {
+    id: "demo-1",
+    name: "TechFest 2026",
+    description: "A premier tech festival featuring hackathons, workshops, and keynotes from industry leaders.",
+    category: "Hackathon",
+    startDate: "15 Apr 2026 – 16 Apr",
+    time: "9:00 AM - 6:00 PM",
+    venue: "JNTU Innovation Hub",
+    fee: 299,
+    org: "CodeCraft Society",
+    advantages: ["Networking", "Internship Opportunities", "Free Lunch"],
+    gradient: "linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)",
+    catColor: "#818cf8",
+  },
+  {
+    id: "demo-2",
+    name: "Design Thinking Masterclass",
+    description: "Learn human-centered design principles with interactive exercises and real case studies.",
+    category: "Seminar",
+    startDate: "10 May 2026",
+    time: "2:00 PM - 5:00 PM",
+    venue: "Creative Arts Building, Room 201",
+    fee: 149,
+    org: "UX Design Academy",
+    advantages: ["Design Toolkit", "Certificate", "Portfolio Review"],
+    gradient: "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
+    catColor: "#f59e0b",
+  },
+  {
+    id: "demo-3",
+    name: "Cloud Computing Deep Dive",
+    description: "AWS, Azure, and GCP compared. Learn cloud architecture, deployment, and cost optimization.",
+    category: "Webinar",
+    startDate: "15 May 2026",
+    time: "3:00 PM - 5:00 PM",
+    venue: "Online (Google Meet)",
+    fee: 0,
+    org: "CloudTech Foundation",
+    advantages: ["Free", "Cloud Credits", "Certificate"],
+    gradient: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+    catColor: "#8b5cf6",
+  },
+  {
+    id: "demo-4",
+    name: "AI & Machine Learning Workshop",
+    description: "Hands-on workshop covering deep learning, NLP, and computer vision with real-world projects.",
+    category: "Workshop",
+    startDate: "20 Apr 2026",
+    time: "10:00 AM - 4:00 PM",
+    venue: "Online (Zoom)",
+    fee: 0,
+    org: "AI Research Lab",
+    advantages: ["Free", "Certificate", "Project-Based Learning"],
+    gradient: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+    catColor: "#10b981",
+  },
+  {
+    id: "demo-5",
+    name: "Startup Summit 2026",
+    description: "Connect with founders, VCs, and mentors. Pitch your startup idea and win seed funding.",
+    category: "Conference",
+    startDate: "5 May 2026 – 6 May",
+    time: "11:00 AM - 7:00 PM",
+    venue: "Hyderabad Convention Centre",
+    fee: 499,
+    org: "Startup India Hub",
+    advantages: ["Investor Access", "Mentorship", "Startup Kit"],
+    gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+    catColor: "#3b82f6",
+  },
+  {
+    id: "demo-6",
+    name: "CyberSec CTF Challenge",
+    description: "Capture The Flag competition testing your cybersecurity skills across web, forensics, and crypto.",
+    category: "Competition",
+    startDate: "28 Apr 2026",
+    time: "6:00 PM - 12:00 AM",
+    venue: "Online",
+    fee: 0,
+    org: "CyberShield Club",
+    advantages: ["Prizes Worth ₹50K", "Certificate", "Industry Recognition"],
+    gradient: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+    catColor: "#ef4444",
+  },
 ];
 
-const features = [
-  {
-    Icon: ShieldCheck,
-    title: "Tamper-Proof Certificates",
-    desc: "Every certificate carries a unique ID and embedded QR code. Verification happens in real-time - no calls, no emails, no guesswork.",
-  },
-  {
-    Icon: FileText,
-    title: "Dynamic Form Builder",
-    desc: "Collect participant data with a drag-and-drop form builder inspired by Google Forms. 14+ field types, real-time preview, zero learning curve.",
-  },
-  {
-    Icon: Award,
-    title: "Achievement-Based Templates",
-    desc: "Distinct certificate designs for Winners, Runners-Up, and Participants. Every achievement level gets the recognition it deserves.",
-  },
-  {
-    Icon: BadgeCheck,
-    title: "Curated Trust Model",
-    desc: "Every organizer is vetted and approved before they can issue certificates. No unverified issuers, no credential fraud.",
-  },
-];
+function EventCard({ event }: { event: (typeof sampleEvents)[number] }) {
+  return (
+    <div className="event-card">
+      {/* Gradient top bar */}
+      <div style={{ height: "5px", background: event.gradient }} />
+      <div style={{ padding: "22px 24px" }}>
+        {/* Category + Price */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+          <span
+            style={{
+              padding: "4px 14px",
+              borderRadius: "20px",
+              background: `${event.catColor}18`,
+              border: `1px solid ${event.catColor}35`,
+              fontSize: "0.72rem",
+              fontWeight: 600,
+              color: event.catColor,
+              textTransform: "capitalize",
+            }}
+          >
+            {event.category}
+          </span>
+          <span
+            style={{
+              fontSize: "0.92rem",
+              color: event.fee > 0 ? "var(--foreground)" : "#10b981",
+              fontWeight: 700,
+            }}
+          >
+            {event.fee > 0 ? `₹${event.fee}` : "FREE"}
+          </span>
+        </div>
+
+        {/* Title */}
+        <h3 style={{ fontSize: "1.12rem", fontWeight: 700, marginBottom: "8px", color: "white" }}>
+          {event.name}
+        </h3>
+
+        {/* Description */}
+        <p
+          style={{
+            fontSize: "0.82rem",
+            color: "var(--muted-foreground)",
+            marginBottom: "14px",
+            lineHeight: 1.6,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical" as const,
+            overflow: "hidden",
+          }}
+        >
+          {event.description}
+        </p>
+
+        {/* Event details */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "7px", marginBottom: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
+            <CalendarDays size={13} style={{ color: event.catColor, flexShrink: 0 }} />
+            <span>{event.startDate}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
+            <Clock size={13} style={{ color: event.catColor, flexShrink: 0 }} />
+            <span>{event.time}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
+            <MapPin size={13} style={{ color: event.catColor, flexShrink: 0 }} />
+            <span>{event.venue}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
+            <Users size={13} style={{ color: event.catColor, flexShrink: 0 }} />
+            <span>{event.org}</span>
+          </div>
+        </div>
+
+        {/* Advantages */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
+          {event.advantages.map((adv) => (
+            <span
+              key={adv}
+              style={{
+                padding: "3px 10px",
+                borderRadius: "16px",
+                background: "rgba(16,185,129,0.08)",
+                border: "1px solid rgba(16,185,129,0.15)",
+                fontSize: "0.7rem",
+                color: "#10b981",
+              }}
+            >
+              ✓ {adv}
+            </span>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: "0.76rem", color: "var(--muted-foreground)" }}>Sample Event</span>
+          <span
+            className="btn-primary"
+            style={{ padding: "8px 18px", fontSize: "0.82rem", borderRadius: "10px" }}
+          >
+            Register →
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const steps = [
   {
@@ -70,137 +239,15 @@ const steps = [
   },
 ];
 
-function HeroPreview() {
-  return (
-    <div className="animate-hero-reveal relative mx-auto mt-14 w-full max-w-5xl rounded-[0.9rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,14,28,0.95),rgba(8,10,20,0.98))] p-4 shadow-[0_32px_110px_rgba(4,7,19,0.55)] [animation-delay:260ms] [animation-fill-mode:both] sm:p-6">
-      <div className="absolute inset-0 rounded-[0.9rem] bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.16),transparent_25%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.14),transparent_25%)]" />
-      <div className="relative">
-        <div className="flex items-center justify-between rounded-[0.75rem] border border-white/8 bg-white/[0.04] px-4 py-3">
-          <div>
-            <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]">
-              Live Trust Surface
-            </p>
-            <p className="mt-1 text-sm font-medium text-white">Real-time certificate verification</p>
-          </div>
-          <div className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
-            Active
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[0.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(20,22,39,0.94),rgba(10,12,23,0.96))] p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]">
-                  Certificate Snapshot
-                </p>
-                <h3 className="mt-2 text-xl font-semibold text-white">ProofPass Credential</h3>
-              </div>
-              <ShieldCheck className="h-8 w-8 text-violet-200" />
-            </div>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[0.65rem] border border-white/7 bg-white/[0.03] p-4">
-                <p className="text-[0.65rem] uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">
-                  Unique ID
-                </p>
-                <p className="mt-3 font-mono text-sm text-white">PP-HF26-0312</p>
-              </div>
-              <div className="rounded-[0.65rem] border border-white/7 bg-white/[0.03] p-4">
-                <p className="text-[0.65rem] uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">
-                  Status
-                </p>
-                <p className="mt-3 text-sm font-semibold text-emerald-200">Verified</p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {["Winner", "Runner-Up", "Participant"].map((tier, index) => (
-                <div
-                  key={tier}
-                  className={cn(
-                    "rounded-[0.65rem] border px-3 py-4 text-center",
-                    index === 1 ? "border-violet-300/20 bg-violet-400/10" : "border-white/7 bg-white/[0.03]",
-                  )}
-                >
-                  <p className="text-[0.6rem] uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">
-                    Tier
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">{tier}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="animate-gentle-float rounded-[0.75rem] border border-white/8 bg-white/[0.04] p-5" style={{ animationDelay: "0.4s" }}>
-              <div className="flex items-center justify-between">
-                <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]">
-                  Verification Time
-                </p>
-                <ScanSearch className="h-4 w-4 text-violet-200" />
-              </div>
-              <p className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-white">&lt; 3s</p>
-              <div className="mt-5 flex gap-2">
-                {[60, 78, 52, 84, 66, 88].map((height, index) => (
-                  <span
-                    key={`${height}-${index}`}
-                    className="animate-gentle-float flex-1 rounded-full bg-[linear-gradient(180deg,#b794f6,#6d5cff_55%,rgba(59,130,246,0.25))]"
-                    style={{ animationDelay: `${index * 0.18}s` }}
-                    aria-hidden="true"
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="animate-hero-reveal rounded-[0.75rem] border border-white/8 bg-white/[0.04] p-5 [animation-delay:420ms] [animation-fill-mode:both]">
-              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]">
-                Trust Quote
-              </p>
-              <p className="mt-4 text-sm leading-7 text-white/88">
-                &ldquo;Verification happens in real-time - no calls, no emails, no guesswork.&rdquo;
-              </p>
-              <div className="mt-5 space-y-2">
-                {[78, 92, 66].map((width, index) => (
-                  <div key={`${width}-${index}`} className="h-2 rounded-full bg-white/8">
-                    <div
-                      className="animate-subtle-pan h-full rounded-full bg-[linear-gradient(90deg,#34d399,#38bdf8)]"
-                      style={{ width: `${width}%`, animationDelay: `${index * 0.2}s` }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SectionHeader({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="mx-auto max-w-2xl text-center">
-      <p className="text-[0.72rem] font-medium uppercase tracking-[0.3em] text-violet-100">{eyebrow}</p>
-      <h2 className="mt-4 text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl">{title}</h2>
-      <p className="mt-4 text-base leading-8 text-[color:var(--muted-foreground)]">{description}</p>
-    </div>
-  );
-}
-
 export default function LandingPage() {
+  // Duplicate events for seamless infinite scroll
+  const carouselEvents = [...sampleEvents, ...sampleEvents];
+
   return (
     <main className="relative overflow-x-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(109,92,255,0.16),transparent_28%),radial-gradient(circle_at_85%_14%,rgba(168,85,247,0.12),transparent_18%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_22%)]" />
 
+      {/* ── Navbar ── */}
       <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8">
         <div className="animate-hero-reveal mx-auto flex max-w-[1100px] items-center justify-between gap-4 rounded-[0.95rem] border border-white/10 bg-[rgba(7,10,19,0.86)] px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.28)] backdrop-blur-xl [animation-delay:80ms] [animation-fill-mode:both] sm:px-5">
           <Link href="/" className="flex items-center gap-3">
@@ -240,7 +287,8 @@ export default function LandingPage() {
 
       <div className="h-24 sm:h-28" />
 
-      <section className="mx-auto max-w-7xl px-5 pb-14 pt-8 text-center sm:px-6 sm:pt-10 lg:px-8 lg:pb-18 lg:pt-12">
+      {/* ── Hero Section ── */}
+      <section className="mx-auto max-w-7xl px-5 pb-10 pt-8 text-center sm:px-6 sm:pt-10 lg:px-8 lg:pb-14 lg:pt-12">
         <div className="mx-auto max-w-3xl">
           <div className="animate-hero-reveal inline-flex items-center gap-2 rounded-full border border-violet-300/16 bg-violet-400/10 px-4 py-2 text-[0.72rem] font-medium uppercase tracking-[0.24em] text-violet-100 [animation-delay:120ms] [animation-fill-mode:both]">
             <Sparkles className="h-3.5 w-3.5" />
@@ -254,7 +302,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="animate-hero-reveal mx-auto mt-6 max-w-2xl text-[1.02rem] leading-8 text-[color:var(--muted-foreground)] [animation-delay:240ms] [animation-fill-mode:both]">
-            ProofPass is the end-to-end platform for event credential management - from organizer onboarding and participant registration to tamper-evident certificate issuance with real-time QR-based verification.
+            Browse verified events from trusted organizers. Register, pay, and get your credentials.
           </p>
 
           <div className="animate-hero-reveal mt-8 flex flex-col items-center justify-center gap-4 [animation-delay:300ms] [animation-fill-mode:both] sm:flex-row">
@@ -271,78 +319,38 @@ export default function LandingPage() {
             </Link>
           </div>
         </div>
-
-        <HeroPreview />
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 pb-10 sm:px-6 lg:px-8 lg:pb-16">
-        <div className="grid gap-px overflow-hidden rounded-[0.8rem] border border-white/8 bg-white/10 md:grid-cols-4">
-          {stats.map((stat) => (
-            <div key={stat.label} className="bg-[linear-gradient(180deg,rgba(14,17,31,0.96),rgba(8,10,20,0.94))] px-6 py-7 text-center">
-              <p className="text-3xl font-semibold tracking-[-0.04em] text-white">{stat.value}</p>
-              <p className="mt-2 text-[0.68rem] uppercase tracking-[0.28em] text-[color:var(--muted-foreground)]">
-                {stat.label}
-              </p>
-            </div>
-          ))}
+      {/* ── Auto-Scrolling Events Carousel ── */}
+      <section className="w-full pb-14 sm:pb-18 lg:pb-22">
+        <div className="mx-auto max-w-3xl px-5 text-center sm:px-6 lg:px-8" style={{ marginBottom: "36px" }}>
+          <p className="text-[0.72rem] font-medium uppercase tracking-[0.3em] text-violet-100">Upcoming Events</p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">Discover & Register</h2>
+          <p className="mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]">
+            Browse upcoming events, register as a participant, and collect your verified credentials.
+          </p>
+        </div>
+
+        <div className="events-carousel">
+          <div className="events-carousel-track">
+            {carouselEvents.map((event, index) => (
+              <EventCard key={`${event.id}-${index}`} event={event} />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <Link
+            href="/events"
+            className={cn(buttonVariants({ variant: "secondary", size: "lg" }), "rounded-full border-white/12 bg-white/[0.05] px-8")}
+          >
+            <Tag className="h-4 w-4" />
+            View All Events
+          </Link>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-14 sm:px-6 lg:px-8 lg:py-18">
-        <SectionHeader
-          eyebrow="Platform Capabilities"
-          title="Built for Trust, Designed for Speed"
-          description="Everything event organizers need to issue credentials that employers, universities, and the world can trust."
-        />
-
-        <div className="mt-12 grid gap-5 md:grid-cols-2">
-          {features.map(({ Icon, title, desc }, index) => (
-            <article
-              key={title}
-              className="animate-hero-reveal rounded-[0.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(13,15,28,0.96),rgba(8,10,20,0.96))] p-6 transition-transform duration-300 hover:-translate-y-1"
-              style={{ animationDelay: `${120 + index * 90}ms`, animationFillMode: "both" }}
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-[0.7rem] border border-white/10 bg-white/[0.05]">
-                <Icon className="h-5 w-5 text-violet-100" />
-              </div>
-              <h3 className="mt-5 text-xl font-semibold text-white">{title}</h3>
-              <p className="mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]">{desc}</p>
-              {index === 0 ? (
-                <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_0.9fr]">
-                  <div className="rounded-[0.65rem] border border-white/7 bg-white/[0.04] p-4">
-                    <p className="text-[0.65rem] uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">
-                      Verification Record
-                    </p>
-                    <div className="mt-4 grid gap-2">
-                      {["Unique ID matched", "Issuer approved", "Certificate status active"].map((item) => (
-                        <div key={item} className="flex items-center justify-between rounded-[0.55rem] border border-white/7 bg-black/20 px-3 py-2.5">
-                          <span className="text-sm text-white/88">{item}</span>
-                          <BadgeCheck className="h-4 w-4 text-emerald-200" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="rounded-[0.65rem] border border-white/7 bg-white/[0.04] p-4">
-                    <p className="text-[0.65rem] uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">
-                      Live Chart
-                    </p>
-                    <div className="mt-5 flex h-[8.6rem] items-end gap-2">
-                      {[36, 68, 52, 80, 64, 94].map((height, barIndex) => (
-                        <span
-                          key={`${height}-${barIndex}`}
-                          className="flex-1 rounded-full bg-[linear-gradient(180deg,#9f7aea,#5b7cff_55%,rgba(56,189,248,0.18))]"
-                          style={{ height }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </article>
-          ))}
-        </div>
-      </section>
-
+      {/* ── How It Works ── */}
       <section className="mx-auto max-w-7xl px-5 py-14 sm:px-6 lg:px-8 lg:py-18">
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="rounded-[0.85rem] border border-white/8 bg-[linear-gradient(180deg,rgba(12,14,28,0.96),rgba(8,10,20,0.98))] p-6 sm:p-8">
@@ -398,6 +406,7 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Verify Certificate ── */}
       <section className="mx-auto max-w-7xl px-5 py-14 sm:px-6 lg:px-8 lg:py-18">
         <div className="grid gap-6 rounded-[0.85rem] border border-white/8 bg-[linear-gradient(180deg,rgba(12,14,28,0.96),rgba(8,10,20,0.98))] p-6 sm:p-8 lg:grid-cols-[0.95fr_1.05fr]">
           <div>
@@ -430,17 +439,10 @@ export default function LandingPage() {
           <div className="grid gap-4 sm:grid-cols-[0.72fr_1.28fr]">
             <div className="rounded-[0.7rem] border border-white/8 bg-white/[0.04] p-5">
               <p className="text-[0.68rem] uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">
-                Scan Layer
+                QR Scanner
               </p>
-              <div className="mt-5 grid place-items-center rounded-[0.6rem] border border-white/7 bg-black/20 px-6 py-8">
-                <div className="grid grid-cols-5 gap-1.5 rounded-[0.7rem] border border-white/10 bg-black/25 p-4">
-                  {Array.from({ length: 25 }).map((_, index) => (
-                    <span
-                      key={index}
-                      className={cn("h-4 w-4 rounded-[0.25rem]", index % 3 === 0 || index % 7 === 0 ? "bg-white" : "bg-white/10")}
-                    />
-                  ))}
-                </div>
+              <div className="mt-4">
+                <QrScanner />
               </div>
             </div>
 
@@ -466,6 +468,7 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── CTA ── */}
       <section className="mx-auto max-w-7xl px-5 py-16 sm:px-6 lg:px-8 lg:py-22">
         <div className="rounded-[0.85rem] border border-white/8 bg-[linear-gradient(180deg,rgba(53,24,91,0.86),rgba(14,16,31,0.96))] px-6 py-14 text-center sm:px-10">
           <p className="text-[0.72rem] uppercase tracking-[0.3em] text-violet-100">Launch Your Credential Flow</p>
@@ -487,6 +490,7 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Footer ── */}
       <footer className="border-t border-white/8">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8 text-sm text-[color:var(--muted-foreground)] sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div className="flex items-center gap-3">

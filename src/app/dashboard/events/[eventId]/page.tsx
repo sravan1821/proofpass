@@ -1,5 +1,5 @@
 import { requireApprovedOrganizer } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { notFound } from "next/navigation";
 import { EventDetailClient } from "./event-detail";
 
@@ -10,7 +10,7 @@ export default async function EventDetailPage({
 }) {
   const user = await requireApprovedOrganizer();
   const { eventId } = await params;
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
 
   const { data: event } = await supabase!
     .from("events")

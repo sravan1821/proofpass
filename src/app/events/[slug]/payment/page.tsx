@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { notFound } from "next/navigation";
 import PaymentPageClient from "./payment-client";
 
@@ -14,7 +14,7 @@ export default async function PaymentPage({
 
   if (!rid) notFound();
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
 
   const { data: event } = await supabase!
     .from("events")

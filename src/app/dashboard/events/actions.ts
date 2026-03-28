@@ -36,7 +36,7 @@ export async function createEventAction(formData: FormData) {
   // Generate slug
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now().toString(36);
 
-  const { data, error } = await supabase.from("events").insert({
+  const { error } = await supabase.from("events").insert({
     name,
     slug,
     description,
@@ -53,12 +53,15 @@ export async function createEventAction(formData: FormData) {
     org_name_display: orgNameDisplay || null,
     advantages,
     organizer_id: user.id,
-    status: "draft",
-  }).select().single();
+    status: "published",
+    admin_approval: "approved",
+  });
 
   if (error) return { error: error.message };
 
-  redirect(`/dashboard/events/${data.id}`);
+  revalidatePath("/dashboard/events");
+  revalidatePath("/dashboard");
+  redirect("/dashboard/events");
 }
 
 export async function updateEventStatusAction(eventId: string, status: string) {
@@ -162,7 +165,7 @@ export async function sendEventUpdateEmailAction(eventId: string, subject: strin
     .select("*")
     .eq("event_id", eventId);
 
-  const recipients = (registrations || []).filter((registration) => {
+  const recipients = (registrations || []).filter((registration: any) => {
     if (!registration.email) return false;
     if (audience === "paid") return registration.payment_status === "paid";
     if (audience === "pending") return registration.payment_status !== "paid";
@@ -190,4 +193,63 @@ export async function sendEventUpdateEmailAction(eventId: string, subject: strin
   }
 
   return { success: true, count: recipients.length };
+}
+
+export async function saveOverviewParticipantsAction(
+  eventId: string,
+  winnerId: string | null,
+  runnerId: string | null
+) {
+  const user = await requireApprovedOrganizer();
+  const supabase = await createMongoServerClient();
+  if (!supabase) return { error: "Service unavailable" };
+
+  // Verify event belongs to user
+  const { data: event } = await supabase
+    .from("events")
+    .select("id")
+    .eq("id", eventId)
+    .eq("organizer_id", user.id)
+    .single();
+
+  if (!event) return { error: "Event not found." };
+
+  // Get all registrations for this event
+  const { data: registrations } = await supabase
+    .from("event_registrations")
+    .select("*")
+    .eq("event_id", eventId);
+
+  if (!registrations || registrations.length === 0) {
+    return { error: "No registrations found." };
+  }
+
+  // Delete existing participants for this event so we can re-create fresh
+  await supabase.from("participants").delete().eq("event_id", eventId);
+
+  const participantsToInsert = registrations.map((reg: any) => {
+    let category = "participant";
+    if (reg.id === winnerId) category = "winner";
+    else if (reg.id === runnerId) category = "runner_up";
+
+    return {
+      event_id: eventId,
+      full_name: reg.full_name,
+      email: reg.email || null,
+      category,
+      achievement_detail:
+        category === "winner"
+          ? "Winner"
+          : category === "runner_up"
+          ? "Runner-Up"
+          : "Participant",
+    };
+  });
+
+  const { error } = await supabase.from("participants").insert(participantsToInsert);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/events/${eventId}`);
+  revalidatePath("/dashboard/certificates");
+  return { success: true, count: participantsToInsert.length };
 }

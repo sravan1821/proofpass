@@ -3,15 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronLeft, Award, CalendarDays, LayoutGrid, Settings, FileText } from "lucide-react";
+import { ChevronLeft, Award, CalendarDays, Home, History } from "lucide-react";
 import { signOutAction } from "../sign-in/actions";
 
 const NAV_ITEMS = [
-  { label: "Overview", href: "/dashboard", icon: LayoutGrid },
+  { label: "Home", href: "/dashboard", icon: Home },
   { label: "Events", href: "/dashboard/events", icon: CalendarDays },
-  { label: "Forms", href: "/dashboard/forms", icon: FileText },
   { label: "Certificates", href: "/dashboard/certificates", icon: Award },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { label: "History", href: "/dashboard/history", icon: History },
 ];
 
 export function DashboardShell({

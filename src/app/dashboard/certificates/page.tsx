@@ -4,6 +4,11 @@ import { CERTIFICATE_TEMPLATES, type CertificateTemplate } from "@/lib/certifica
 import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { CertificatesClient } from "./certificates-client";
 
+// Strip MongoDB _id buffers & toJSON methods so Next.js can serialize to client
+function serialize<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
+
 export default async function CertificatesPage() {
   const user = await requireApprovedOrganizer();
   const supabase = await createMongoServerClient();
@@ -25,6 +30,18 @@ export default async function CertificatesPage() {
     .select("*")
     .eq("organizer_id", user.id)
     .order("created_at", { ascending: false })) as { data: any[] | null };
+
+  // Fetch all registrations for the organizer's events
+  const eventIds = (events || []).map((e: any) => e.id);
+  let allRegistrations: any[] = [];
+  if (eventIds.length > 0) {
+    const { data: regs } = (await supabase!
+      .from("event_registrations")
+      .select("*")
+      .in("event_id", eventIds)
+      .order("created_at", { ascending: false })) as { data: any[] | null };
+    allRegistrations = regs || [];
+  }
 
   const certs = (certificates || []).map((certificate: any) => ({
     ...certificate,
@@ -58,5 +75,12 @@ export default async function CertificatesPage() {
     },
   }));
 
-  return <CertificatesClient events={events || []} certificates={certs} templates={[...CERTIFICATE_TEMPLATES, ...mappedCustomTemplates]} />;
+  return (
+    <CertificatesClient
+      events={serialize(events || [])}
+      certificates={serialize(certs)}
+      templates={serialize([...CERTIFICATE_TEMPLATES, ...mappedCustomTemplates])}
+      registrations={serialize(allRegistrations)}
+    />
+  );
 }

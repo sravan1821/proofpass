@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { QrScanner } from "../qr-scanner";
 
 type VerificationEvent = {
   name?: string | null;
@@ -36,7 +37,7 @@ export default async function VerifyPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createMongoServerClient();
 
   let certificate: VerificationCertificate | null = null;
   let event: VerificationEvent | null = null;
@@ -226,6 +227,20 @@ export default async function VerifyPage({
             <input name="q" type="text" className="input-field" placeholder="Enter Certificate ID (e.g., PP-2026-TF-00001)" style={{ flex: 1 }} />
             <button type="submit" className="btn-primary" style={{ padding: "12px 20px" }}>Verify</button>
           </form>
+        </div>
+
+        {/* QR Scanner */}
+        <div className="glass-card" style={{ padding: "20px", marginTop: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+            <ScanSearch size={18} style={{ color: "var(--primary-soft)" }} />
+            <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
+              Scan QR Code
+            </p>
+          </div>
+          <p style={{ fontSize: "0.82rem", color: "var(--muted-foreground)", marginBottom: "14px", lineHeight: 1.6 }}>
+            Point your camera at the QR code on a ProofPass certificate to instantly verify it.
+          </p>
+          <QrScanner />
         </div>
 
         {/* Footer */}
