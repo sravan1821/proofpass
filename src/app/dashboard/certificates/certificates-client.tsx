@@ -1,23 +1,255 @@
 "use client";
 
-import { useState } from "react";
-import { issueCertificatesAction } from "./actions";
+import { useMemo, useState } from "react";
+import { CheckCircle2, Eye, LayoutTemplate, Plus, Save, Trophy, Upload, X } from "lucide-react";
+import type { CertificateTemplate } from "@/lib/certificates/templates";
+import { issueCertificatesAction, upsertCustomCertificateTemplateAction } from "./actions";
 
 interface CertificatesClientProps {
   events: Array<Record<string, unknown>>;
   certificates: Array<Record<string, unknown>>;
+  templates: CertificateTemplate[];
 }
 
-export function CertificatesClient({ events, certificates }: CertificatesClientProps) {
+function TemplateArtwork({
+  template,
+  compact = false,
+}: {
+  template: CertificateTemplate;
+  compact?: boolean;
+}) {
+  if (template.source === "custom") {
+    return (
+      <div
+        style={{
+          height: compact ? "142px" : "420px",
+          width: "100%",
+          borderRadius: compact ? "16px" : "26px",
+          overflow: "hidden",
+          background: template.paper,
+          border: `1px solid ${template.frame}`,
+          position: "relative",
+        }}
+      >
+        {template.pdfDataUrl ? (
+          <iframe
+            src={template.pdfDataUrl}
+            title={template.name}
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+              pointerEvents: "none",
+              transform: compact ? "scale(1.02)" : "none",
+              transformOrigin: "center top",
+              background: "white",
+            }}
+          />
+        ) : null}
+        <div
+          style={{
+            position: "absolute",
+            left: compact ? "8px" : "16px",
+            right: compact ? "8px" : "16px",
+            bottom: compact ? "8px" : "16px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "8px",
+            background: "rgba(6,12,24,0.72)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: compact ? "10px" : "14px",
+            padding: compact ? "6px 8px" : "10px 12px",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: compact ? "0.68rem" : "0.86rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{template.name}</div>
+            <div style={{ color: "var(--muted-foreground)", fontSize: compact ? "0.58rem" : "0.74rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {template.pdfName || "Uploaded PDF"}
+            </div>
+          </div>
+          <span className="badge badge-info" style={{ flexShrink: 0, fontSize: compact ? "0.54rem" : undefined, padding: compact ? "4px 7px" : undefined }}>Custom PDF</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        height: compact ? "142px" : "420px",
+        width: "100%",
+        borderRadius: compact ? "16px" : "26px",
+        position: "relative",
+        overflow: "hidden",
+        background: template.paper,
+        border: `1px solid ${template.frame}`,
+        boxShadow: compact ? "0 16px 44px rgba(5, 10, 24, 0.24)" : "0 28px 90px rgba(5, 10, 24, 0.36)",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: compact ? "10px" : "18px",
+          borderRadius: compact ? "12px" : "22px",
+          border: `1px solid ${template.frame}`,
+          background:
+            "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 28%), radial-gradient(circle at bottom right, rgba(255,255,255,0.05), transparent 24%)",
+          padding: compact ? "12px" : "30px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: compact ? "8px" : "14px" }}>
+          <div>
+            <div style={{ color: template.badge, fontSize: compact ? "0.48rem" : "0.8rem", letterSpacing: compact ? "0.12em" : "0.18em", textTransform: "uppercase", marginBottom: compact ? "5px" : "12px" }}>
+              ProofPass Credential
+            </div>
+            <div style={{ color: template.badge, fontSize: compact ? "0.46rem" : "0.76rem", letterSpacing: compact ? "0.08em" : "0.12em", textTransform: "uppercase", padding: compact ? "3px 6px" : "6px 12px", borderRadius: "999px", border: `1px solid ${template.frame}`, display: "inline-flex" }}>
+              {template.label}
+            </div>
+          </div>
+          <div
+            style={{
+              width: compact ? "28px" : "54px",
+              height: compact ? "28px" : "54px",
+              borderRadius: compact ? "9px" : "16px",
+              background: template.accent,
+              opacity: 0.95,
+              boxShadow: "0 12px 34px rgba(0,0,0,0.24)",
+            }}
+          />
+        </div>
+
+        <div style={{ textAlign: "center", padding: compact ? "0 4px" : "0 16px", minHeight: compact ? "40px" : "auto", display: "flex", flexDirection: "column", justifyContent: "center", gap: compact ? "5px" : 0 }}>
+          <div style={{ color: template.ink, fontSize: compact ? "0.48rem" : "1rem", letterSpacing: compact ? "0.08em" : "0.14em", textTransform: "uppercase", opacity: 0.72, marginBottom: compact ? "0" : "16px" }}>
+            Certificate of Achievement
+          </div>
+          <div style={{ color: template.ink, fontSize: compact ? "0.64rem" : "3.15rem", fontWeight: 700, letterSpacing: compact ? "-0.02em" : "-0.04em", lineHeight: compact ? 1.05 : 1.02, marginBottom: compact ? "0" : "18px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {template.sampleRecipient}
+          </div>
+          <div style={{ width: compact ? "42px" : "136px", height: compact ? "2px" : "4px", margin: "0 auto", borderRadius: "999px", background: template.accent, marginBottom: compact ? "0" : "18px" }} />
+          {!compact ? (
+            <div style={{ color: template.ink, fontSize: "1rem", opacity: 0.84, whiteSpace: "normal", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {template.sampleAchievement}
+            </div>
+          ) : null}
+        </div>
+
+        {compact ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+            <div style={{ color: template.ink, opacity: 0.72, fontSize: "0.48rem", letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {template.sampleAchievement}
+            </div>
+            <div style={{ color: template.ink, opacity: 0.52, fontSize: "0.42rem", letterSpacing: "0.1em", textTransform: "uppercase", flexShrink: 0 }}>
+              ProofPass
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "12px" }}>
+            <div>
+              <div style={{ width: "112px", height: "2px", background: template.frame, marginBottom: "8px" }} />
+              <div style={{ color: template.ink, opacity: 0.72, fontSize: "0.78rem" }}>Organizer Signature</div>
+            </div>
+            <div style={{ color: template.ink, opacity: 0.66, fontSize: "0.76rem", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              Verify with ProofPass
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type EditorState = {
+  templateId?: string;
+  name: string;
+  signerName: string;
+  signerTitle: string;
+  placeholderRecipientName: string;
+  placeholderAchievement: string;
+  placeholderEventName: string;
+  placeholderOrganizationName: string;
+  placeholderCertificateId: string;
+  placeholderIssueDate: string;
+};
+
+const DEFAULT_EDITOR_STATE: EditorState = {
+  name: "",
+  signerName: "",
+  signerTitle: "",
+  placeholderRecipientName: "{{recipient_name}}",
+  placeholderAchievement: "{{achievement}}",
+  placeholderEventName: "{{event_name}}",
+  placeholderOrganizationName: "{{organization_name}}",
+  placeholderCertificateId: "{{certificate_id}}",
+  placeholderIssueDate: "{{issue_date}}",
+};
+
+export function CertificatesClient({ events, certificates, templates }: CertificatesClientProps) {
   const [selectedEventId, setSelectedEventId] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0]?.id ?? "");
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorState, setEditorState] = useState<EditorState>(DEFAULT_EDITOR_STATE);
+  const [sendEmail, setSendEmail] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [msg, setMsg] = useState("");
 
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => template.id === selectedTemplateId) ?? templates[0],
+    [selectedTemplateId, templates],
+  );
+
+  const previewTemplate = useMemo(
+    () => templates.find((template) => template.id === previewTemplateId) ?? null,
+    [previewTemplateId, templates],
+  );
+
+  function openCreateModal() {
+    setEditorState(DEFAULT_EDITOR_STATE);
+    setEditorOpen(true);
+  }
+
+  function openEditModal(template: CertificateTemplate) {
+    setEditorState({
+      templateId: template.id,
+      name: template.name,
+      signerName: template.signerName || "",
+      signerTitle: template.signerTitle || "",
+      placeholderRecipientName: template.placeholders?.recipientName || "{{recipient_name}}",
+      placeholderAchievement: template.placeholders?.achievement || "{{achievement}}",
+      placeholderEventName: template.placeholders?.eventName || "{{event_name}}",
+      placeholderOrganizationName: template.placeholders?.organizationName || "{{organization_name}}",
+      placeholderCertificateId: template.placeholders?.certificateId || "{{certificate_id}}",
+      placeholderIssueDate: template.placeholders?.issueDate || "{{issue_date}}",
+    });
+    setEditorOpen(true);
+  }
+
+  async function handleSaveTemplate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingTemplate(true);
+    setMsg("");
+    const result = await upsertCustomCertificateTemplateAction(new FormData(event.currentTarget));
+    if (result?.error) {
+      setMsg(result.error);
+    } else {
+      setEditorOpen(false);
+      setMsg("Custom template saved.");
+    }
+    setSavingTemplate(false);
+  }
+
   async function handleIssue() {
-    if (!selectedEventId) return;
+    if (!selectedEventId || !selectedTemplateId) return;
     setLoading(true);
     setMsg("");
-    const result = await issueCertificatesAction(selectedEventId);
+    const result = await issueCertificatesAction(selectedEventId, selectedTemplateId, sendEmail);
     if (result?.error) setMsg(result.error);
     else setMsg(`Successfully issued ${result.count} certificate(s)!`);
     setLoading(false);
@@ -36,55 +268,163 @@ export function CertificatesClient({ events, certificates }: CertificatesClientP
   };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-2">Certificates</h1>
-      <p style={{ color: "var(--muted-foreground)", marginBottom: "24px" }}>Issue and manage certificates for your events</p>
-
-      {/* Issue Panel */}
-      <div className="glass-card" style={{ padding: "24px", marginBottom: "24px" }}>
-        <h2 className="font-bold mb-4">Issue Certificates</h2>
-        <div style={{ display: "flex", gap: "12px", alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Select Event</label>
-            <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="input-field"
-            >
-              <option value="">Choose an event...</option>
-              {events.map((event) => (
-                <option key={event.id as string} value={event.id as string}>
-                  {event.name as string} ({event.status as string})
-                </option>
-              ))}
-            </select>
-          </div>
-          <button onClick={handleIssue} className="btn-primary" disabled={!selectedEventId || loading}>
-            {loading ? "Issuing..." : "🏆 Issue Certificates"}
-          </button>
-        </div>
-        {msg && (
-          <div style={{ marginTop: "12px", padding: "10px 14px", borderRadius: "8px", fontSize: "0.875rem", background: msg.includes("error") || msg.includes("Error") || msg.includes("No ") || msg.includes("not found") ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", color: msg.includes("error") || msg.includes("Error") || msg.includes("No ") || msg.includes("not found") ? "var(--danger)" : "var(--success)" }}>
-            {msg}
-          </div>
-        )}
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      <div>
+        <h1 className="text-2xl font-bold mb-2">Certificates</h1>
+        <p style={{ color: "var(--muted-foreground)" }}>Pick a visual template, or upload your own high-quality PDF and map the placeholders you need.</p>
       </div>
 
-      {/* Certificate List */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: "24px", alignItems: "start" }}>
+        <div className="glass-card" style={{ padding: "24px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <div className="inline-flex items-center gap-2" style={{ color: "var(--primary-soft)" }}>
+              <LayoutTemplate size={18} />
+              <span className="font-semibold">Certificate Templates</span>
+            </div>
+            <button type="button" onClick={openCreateModal} className="btn-secondary" style={{ padding: "8px 12px", fontSize: "0.82rem" }}>
+              <Plus size={15} />
+              Add PDF Template
+            </button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "14px" }}>
+            {templates.map((template) => {
+              const selected = selectedTemplateId === template.id;
+              return (
+                <div
+                  key={template.id}
+                  style={{
+                    padding: "12px",
+                    background: selected ? "rgba(88,115,255,0.08)" : "rgba(255,255,255,0.02)",
+                    border: selected ? "1px solid rgba(143,220,255,0.34)" : "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: "18px",
+                    minHeight: "286px",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTemplateId(template.id)}
+                    style={{ display: "block", width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+                  >
+                    <TemplateArtwork template={template} compact />
+                  </button>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", marginTop: "12px" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="font-semibold" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{template.name}</div>
+                      <div style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginTop: "2px" }}>{template.label}</div>
+                    </div>
+                    {selected ? <CheckCircle2 size={18} color="#8fdcff" /> : null}
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTemplateId(template.id)}
+                      className={selected ? "btn-primary" : "btn-secondary"}
+                      style={{ flex: 1, padding: "8px 12px", fontSize: "0.8rem" }}
+                    >
+                      {selected ? "Selected" : "Select"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTemplateId(template.id)}
+                      className="btn-secondary"
+                      style={{ padding: "8px 12px", fontSize: "0.8rem" }}
+                    >
+                      <Eye size={15} />
+                      Preview
+                    </button>
+                  </div>
+                  {template.source === "custom" ? (
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(template)}
+                      style={{ marginTop: "10px", background: "transparent", border: "none", color: "var(--primary-soft)", padding: 0, fontSize: "0.78rem", cursor: "pointer", alignSelf: "flex-start" }}
+                    >
+                      Edit placeholders
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: "24px" }}>
+          <h2 className="font-bold mb-4">Issue Certificates</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Select Event</label>
+              <select
+                value={selectedEventId}
+                onChange={(event) => setSelectedEventId(event.target.value)}
+                className="input-field"
+              >
+                <option value="">Choose an event...</option>
+                {events.map((event) => (
+                  <option key={event.id as string} value={event.id as string}>
+                    {event.name as string} ({event.status as string})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ padding: "14px", borderRadius: "18px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted-foreground)", marginBottom: "10px" }}>
+                Selected Template
+              </div>
+              <TemplateArtwork template={selectedTemplate} compact />
+              {selectedTemplate.source === "custom" && selectedTemplate.placeholders ? (
+                <div style={{ marginTop: "12px", display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                  {[
+                    selectedTemplate.placeholders.recipientName,
+                    selectedTemplate.placeholders.achievement,
+                    selectedTemplate.placeholders.eventName,
+                    selectedTemplate.placeholders.organizationName,
+                    selectedTemplate.placeholders.certificateId,
+                    selectedTemplate.placeholders.issueDate,
+                  ].map((token) => (
+                    <span key={token} className="badge badge-neutral" style={{ textTransform: "none", letterSpacing: 0 }}>{token}</span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem" }}>
+              <input type="checkbox" checked={sendEmail} onChange={(event) => setSendEmail(event.target.checked)} />
+              Send issued certificates by email when recipient email is available
+            </label>
+
+            <button onClick={handleIssue} className="btn-primary" disabled={!selectedEventId || !selectedTemplateId || loading}>
+              <span className="inline-flex items-center gap-2">
+                <Trophy size={16} />
+                {loading ? "Issuing..." : "Issue Certificates"}
+              </span>
+            </button>
+          </div>
+
+          {msg ? (
+            <div style={{ marginTop: "12px", padding: "10px 14px", borderRadius: "10px", fontSize: "0.875rem", background: msg.includes("error") || msg.includes("Error") || msg.includes("No ") || msg.includes("not found") ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", color: msg.includes("error") || msg.includes("Error") || msg.includes("No ") || msg.includes("not found") ? "var(--danger)" : "var(--success)" }}>
+              {msg}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
       <div className="glass-card" style={{ overflow: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "700px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "880px" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--border)" }}>
-              {["Certificate ID", "Recipient", "Category", "Event", "Status", "Issued"].map((h) => (
-                <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.75rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>{h}</th>
+              {["Certificate ID", "Recipient", "Category", "Template", "Event", "Status", "Issued"].map((heading) => (
+                <th key={heading} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.75rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>{heading}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {certificates.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: "40px", textAlign: "center", color: "var(--muted-foreground)" }}>
-                  No certificates issued yet. Select an event above to issue certificates.
+                <td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "var(--muted-foreground)" }}>
+                  No certificates issued yet.
                 </td>
               </tr>
             ) : (
@@ -99,6 +439,9 @@ export function CertificatesClient({ events, certificates }: CertificatesClientP
                       {(cert.category as string)?.replace("_", " ")}
                     </span>
                   </td>
+                  <td style={{ padding: "12px 16px", fontSize: "0.84rem", color: "var(--foreground)" }}>
+                    {(cert.template_name as string) || "Midnight Grid"}
+                  </td>
                   <td style={{ padding: "12px 16px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>{(cert as Record<string, unknown>).event_name as string || "—"}</td>
                   <td style={{ padding: "12px 16px" }}>
                     <span className={`badge ${statusColors[cert.status as string] || "badge-neutral"}`}>{cert.status as string}</span>
@@ -112,6 +455,147 @@ export function CertificatesClient({ events, certificates }: CertificatesClientP
           </tbody>
         </table>
       </div>
+
+      {previewTemplate ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 8, 20, 0.74)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 80,
+            padding: "24px",
+          }}
+          onClick={() => setPreviewTemplateId(null)}
+        >
+          <div
+            className="glass-card"
+            style={{ width: "min(1120px, 100%)", padding: "22px", position: "relative" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewTemplateId(null)}
+              style={{ position: "absolute", top: "18px", right: "18px", width: "36px", height: "36px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--foreground)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+            >
+              <X size={18} />
+            </button>
+            <div style={{ marginBottom: "14px" }}>
+              <h2 className="text-xl font-bold" style={{ marginBottom: "4px" }}>{previewTemplate.name}</h2>
+              <p style={{ color: "var(--muted-foreground)", margin: 0 }}>{previewTemplate.source === "custom" ? "Uploaded PDF template preview" : previewTemplate.label}</p>
+            </div>
+            <TemplateArtwork template={previewTemplate} />
+          </div>
+        </div>
+      ) : null}
+
+      {editorOpen ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 8, 20, 0.74)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 90,
+            padding: "24px",
+          }}
+          onClick={() => setEditorOpen(false)}
+        >
+          <div
+            className="glass-card"
+            style={{ width: "min(1040px, 100%)", padding: "24px" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <div>
+                <h2 className="text-xl font-bold" style={{ marginBottom: "4px" }}>{editorState.templateId ? "Edit Custom PDF Template" : "Add Custom PDF Template"}</h2>
+                <p style={{ color: "var(--muted-foreground)", margin: 0 }}>
+                  Upload the certificate PDF, add signature art, and define the placeholder tokens you want to replace later.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditorOpen(false)}
+                style={{ width: "36px", height: "36px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--foreground)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTemplate}>
+              {editorState.templateId ? <input type="hidden" name="templateId" value={editorState.templateId} /> : null}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Template Name</label>
+                    <input name="name" className="input-field" value={editorState.name} onChange={(event) => setEditorState((current) => ({ ...current, name: event.target.value }))} placeholder="Luxury Gold Appreciation" />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Certificate PDF</label>
+                    <input name="pdfFile" type="file" accept="application/pdf" className="input-field" style={{ padding: "10px 12px" }} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Signature Image</label>
+                    <input name="signatureFile" type="file" accept="image/png,image/jpeg,image/webp" className="input-field" style={{ padding: "10px 12px" }} />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Signer Name</label>
+                      <input name="signerName" className="input-field" value={editorState.signerName} onChange={(event) => setEditorState((current) => ({ ...current, signerName: event.target.value }))} placeholder="Pilla Usha Rani" />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Signer Title</label>
+                      <input name="signerTitle" className="input-field" value={editorState.signerTitle} onChange={(event) => setEditorState((current) => ({ ...current, signerTitle: event.target.value }))} placeholder="Founder" />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ fontSize: "0.84rem", color: "var(--muted-foreground)", lineHeight: 1.6 }}>
+                    Use the same placeholder tokens inside your PDF design. Later, the system can replace them with participant and event values when the certificate is rendered.
+                  </div>
+                  {[
+                    ["placeholderRecipientName", "Recipient name", editorState.placeholderRecipientName],
+                    ["placeholderAchievement", "Achievement", editorState.placeholderAchievement],
+                    ["placeholderEventName", "Event name", editorState.placeholderEventName],
+                    ["placeholderOrganizationName", "Organization name", editorState.placeholderOrganizationName],
+                    ["placeholderCertificateId", "Certificate ID", editorState.placeholderCertificateId],
+                    ["placeholderIssueDate", "Issue date", editorState.placeholderIssueDate],
+                  ].map(([field, label, value]) => (
+                    <div key={field}>
+                      <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>{label}</label>
+                      <input
+                        name={field}
+                        className="input-field"
+                        value={String(value)}
+                        onChange={(event) => setEditorState((current) => ({ ...current, [field]: event.target.value } as EditorState))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+                <button type="button" className="btn-secondary" onClick={() => setEditorOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={savingTemplate}>
+                  {editorState.templateId ? <Save size={16} /> : <Upload size={16} />}
+                  {savingTemplate ? "Saving..." : editorState.templateId ? "Save Template" : "Upload Template"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

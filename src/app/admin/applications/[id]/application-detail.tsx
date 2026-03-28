@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { approveApplicationAction, rejectApplicationAction } from "../../actions";
 
 interface ApplicationDetailProps {
@@ -109,10 +110,16 @@ export function ApplicationDetail({ application }: ApplicationDetailProps) {
       {isPending && (
         <div style={{ display: "flex", gap: "12px" }}>
           <button onClick={handleApprove} className="btn-success" disabled={loading}>
-            {loading ? "Processing..." : "✓ Approve Application"}
+            <span className="inline-flex items-center gap-2">
+              <CheckCircle2 size={16} />
+              {loading ? "Processing..." : "Approve Application"}
+            </span>
           </button>
           <button onClick={() => setShowRejectModal(true)} className="btn-danger" disabled={loading}>
-            ✗ Reject Application
+            <span className="inline-flex items-center gap-2">
+              <XCircle size={16} />
+              Reject Application
+            </span>
           </button>
         </div>
       )}

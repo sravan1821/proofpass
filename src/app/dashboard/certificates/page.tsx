@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireApprovedOrganizer } from "@/lib/auth";
+import { CERTIFICATE_TEMPLATES, type CertificateTemplate } from "@/lib/certificates/templates";
 import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { CertificatesClient } from "./certificates-client";
 
@@ -19,10 +20,43 @@ export default async function CertificatesPage() {
     .eq("organizer_id", user.id)
     .order("issued_at", { ascending: false })) as { data: any[] | null };
 
-  const certs = (certificates || []).map((c: any) => ({
-    ...c,
-    event_name: (c.events as Record<string, string>)?.name || "—",
+  const { data: customTemplates } = (await supabase!
+    .from("certificate_templates")
+    .select("*")
+    .eq("organizer_id", user.id)
+    .order("created_at", { ascending: false })) as { data: any[] | null };
+
+  const certs = (certificates || []).map((certificate: any) => ({
+    ...certificate,
+    event_name: (certificate.events as Record<string, string>)?.name || "—",
   }));
 
-  return <CertificatesClient events={events || []} certificates={certs} />;
+  const mappedCustomTemplates: CertificateTemplate[] = (customTemplates || []).map((template: any) => ({
+    id: template.id,
+    name: template.name,
+    source: "custom",
+    label: "Custom PDF",
+    accent: "linear-gradient(135deg, #8fdcff 0%, #5873ff 100%)",
+    frame: "rgba(143,220,255,0.18)",
+    paper: "linear-gradient(160deg, #0b1220 0%, #121b2d 100%)",
+    ink: "#eff5ff",
+    badge: "#8fdcff",
+    sampleRecipient: "Participant Name",
+    sampleAchievement: "Your uploaded certificate layout",
+    pdfDataUrl: template.pdf_data_url,
+    pdfName: template.pdf_name,
+    signatureDataUrl: template.signature_data_url,
+    signerName: template.signer_name,
+    signerTitle: template.signer_title,
+    placeholders: {
+      recipientName: template.placeholder_recipient_name || "{{recipient_name}}",
+      achievement: template.placeholder_achievement || "{{achievement}}",
+      eventName: template.placeholder_event_name || "{{event_name}}",
+      organizationName: template.placeholder_organization_name || "{{organization_name}}",
+      certificateId: template.placeholder_certificate_id || "{{certificate_id}}",
+      issueDate: template.placeholder_issue_date || "{{issue_date}}",
+    },
+  }));
+
+  return <CertificatesClient events={events || []} certificates={certs} templates={[...CERTIFICATE_TEMPLATES, ...mappedCustomTemplates]} />;
 }

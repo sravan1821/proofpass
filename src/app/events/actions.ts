@@ -1,6 +1,7 @@
 "use server";
 
 import { createMongoServerClient } from "@/lib/db/mongo/server";
+import { getAppBaseUrl, getOrganizerSmtpSettings, sendOrganizerEmail } from "@/lib/mail/organizer-mail";
 import { revalidatePath } from "next/cache";
 
 export async function registerForEventAction(formData: FormData) {
@@ -20,7 +21,7 @@ export async function registerForEventAction(formData: FormData) {
   // Check event exists and is approved
   const { data: event } = await supabase
     .from("events")
-    .select("id, admin_approval, registration_deadline, slug")
+    .select("id, admin_approval, registration_deadline, slug, name, start_date, event_time, venue_details, organizer_id")
     .eq("id", eventId)
     .single();
 
@@ -63,6 +64,26 @@ export async function registerForEventAction(formData: FormData) {
     .single();
 
   if (error) return { error: error.message };
+
+  const organizerSmtp = await getOrganizerSmtpSettings(String(event.organizer_id));
+  if (organizerSmtp?.sendRegistrationEmails) {
+    const eventUrl = `${getAppBaseUrl()}/events/${event.slug}`;
+    await sendOrganizerEmail({
+      organizerId: String(event.organizer_id),
+      to: email,
+      subject: `Registration confirmed for ${event.name}`,
+      text: `Hi ${fullName}, your registration for ${event.name} is confirmed. View event details here: ${eventUrl}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+          <h2>Registration confirmed</h2>
+          <p>Hi ${fullName},</p>
+          <p>Your registration for <strong>${event.name}</strong> has been received.</p>
+          <p>${event.start_date ? `Date: ${new Date(event.start_date).toLocaleDateString()}<br/>` : ""}${event.event_time ? `Time: ${event.event_time}<br/>` : ""}${event.venue_details ? `Venue: ${event.venue_details}` : ""}</p>
+          <p><a href="${eventUrl}">Open event page</a></p>
+        </div>
+      `,
+    }).catch(() => null);
+  }
 
   revalidatePath(`/events/${event.slug}`);
   return { success: true, registrationId: data.id, slug: event.slug };

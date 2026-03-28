@@ -1,5 +1,6 @@
 import { EventRecord, EventRegistrationRecord } from "@/app/events/types";
 import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReceiptActions } from "./receipt-actions";
@@ -49,7 +50,7 @@ export default async function ReceiptPage({
       <div style={{ maxWidth: "600px", margin: "0 auto", paddingTop: "100px", padding: "100px 24px 60px" }}>
         <div style={{ textAlign: "center", marginBottom: "28px" }}>
           <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "rgba(16,185,129,0.1)", border: "2px solid rgba(16,185,129,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: "2rem" }}>
-            ✓
+            <CheckCircle2 size={32} />
           </div>
           <h1 className="text-2xl font-bold" style={{ marginBottom: "8px" }}>Registration Successful!</h1>
           <p style={{ color: "var(--muted-foreground)" }}>Your registration has been confirmed. Save this receipt for your records.</p>

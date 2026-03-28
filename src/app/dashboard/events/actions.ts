@@ -2,6 +2,7 @@
 
 import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { requireApprovedOrganizer } from "@/lib/auth";
+import { sendOrganizerEmail } from "@/lib/mail/organizer-mail";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -16,9 +17,17 @@ export async function createEventAction(formData: FormData) {
   const startDate = formData.get("startDate") as string;
   const endDate = formData.get("endDate") as string;
   const eventMode = formData.get("eventMode") as string;
+  const eventTime = formData.get("eventTime") as string;
   const venueDetails = formData.get("venueDetails") as string;
   const eventCode = formData.get("eventCode") as string;
   const expectedParticipants = formData.get("expectedParticipants") as string;
+  const registrationFee = formData.get("registrationFee") as string;
+  const orgNameDisplay = formData.get("orgNameDisplay") as string;
+  const advantages = ((formData.get("advantages") as string) || "")
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 5);
 
   if (!name || !description || !category || !startDate) {
     return { error: "Name, description, category, and start date are required." };
@@ -35,10 +44,14 @@ export async function createEventAction(formData: FormData) {
     start_date: startDate,
     end_date: endDate || startDate,
     event_mode: eventMode || "in_person",
+    event_time: eventTime || null,
     venue_details: venueDetails || null,
     venue: venueDetails || null,
     event_code: eventCode || name.replace(/[^A-Z]/g, "").slice(0, 4) || name.slice(0, 2).toUpperCase(),
     expected_participants: expectedParticipants ? parseInt(expectedParticipants) : null,
+    registration_fee: registrationFee ? parseInt(registrationFee) : 0,
+    org_name_display: orgNameDisplay || null,
+    advantages,
     organizer_id: user.id,
     status: "draft",
   }).select().single();
@@ -124,4 +137,57 @@ export async function deleteParticipantAction(participantId: string, eventId: st
 
   revalidatePath(`/dashboard/events/${eventId}`);
   return { success: true };
+}
+
+export async function sendEventUpdateEmailAction(eventId: string, subject: string, message: string, audience: string) {
+  const user = await requireApprovedOrganizer();
+  const supabase = await createMongoServerClient();
+  if (!supabase) return { error: "Service unavailable" };
+
+  if (!subject.trim() || !message.trim()) {
+    return { error: "Subject and message are required." };
+  }
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("*")
+    .eq("id", eventId)
+    .eq("organizer_id", user.id)
+    .single();
+
+  if (!event) return { error: "Event not found." };
+
+  const { data: registrations } = await supabase
+    .from("event_registrations")
+    .select("*")
+    .eq("event_id", eventId);
+
+  const recipients = (registrations || []).filter((registration) => {
+    if (!registration.email) return false;
+    if (audience === "paid") return registration.payment_status === "paid";
+    if (audience === "pending") return registration.payment_status !== "paid";
+    return true;
+  });
+
+  if (recipients.length === 0) {
+    return { error: "No matching registrations with email addresses were found." };
+  }
+
+  for (const recipient of recipients) {
+    await sendOrganizerEmail({
+      organizerId: user.id,
+      to: String(recipient.email),
+      subject,
+      text: message,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+          <h2>${event.name}</h2>
+          <p>Hi ${recipient.full_name || "there"},</p>
+          <p>${message.replace(/\n/g, "<br/>")}</p>
+        </div>
+      `,
+    }).catch(() => null);
+  }
+
+  return { success: true, count: recipients.length };
 }

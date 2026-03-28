@@ -27,5 +27,11 @@ export default async function EventDetailPage({
     .eq("event_id", eventId)
     .order("created_at", { ascending: true });
 
-  return <EventDetailClient event={event} participants={participants || []} />;
+  const { data: registrations } = await supabase!
+    .from("event_registrations")
+    .select("*")
+    .eq("event_id", eventId)
+    .order("created_at", { ascending: false });
+
+  return <EventDetailClient event={event} participants={participants || []} registrations={registrations || []} />;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { approveEventAction, rejectEventAction } from "../../actions";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-provider";
@@ -47,7 +48,10 @@ export default function AdminEventDetail({ event, organizer, registrations }: Ad
         </div>
         <div className="flex items-center gap-3">
           <ThemeToggle size="sm" />
-          <Link href="/admin/events" className="btn-secondary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>← All Events</Link>
+          <Link href="/admin/events" className="btn-secondary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>
+            <ArrowLeft size={16} />
+            All Events
+          </Link>
         </div>
       </header>
 
@@ -129,10 +133,16 @@ export default function AdminEventDetail({ event, organizer, registrations }: Ad
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
               <button onClick={handleApprove} className="btn-success" disabled={loading} style={{ padding: "10px 24px", fontSize: "0.875rem" }}>
-                ✅ Approve Event
+                <span className="inline-flex items-center gap-2">
+                  <CheckCircle2 size={16} />
+                  Approve Event
+                </span>
               </button>
               <button onClick={() => setShowReject(true)} className="btn-danger" disabled={loading} style={{ padding: "10px 24px", fontSize: "0.875rem" }}>
-                ❌ Reject Event
+                <span className="inline-flex items-center gap-2">
+                  <XCircle size={16} />
+                  Reject Event
+                </span>
               </button>
             </div>
             {showReject && (

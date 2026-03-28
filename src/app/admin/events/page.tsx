@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireAdmin } from "@/lib/auth";
 import { createMongoServerClient } from "@/lib/db/mongo/server";
+import { ArrowLeft, CheckCircle2, Clock3, XCircle } from "lucide-react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-provider";
 
@@ -70,7 +71,10 @@ export default async function AdminEventsPage() {
         </div>
         <div className="flex items-center gap-3">
           <ThemeToggle size="sm" />
-          <Link href="/admin" className="btn-secondary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>← Dashboard</Link>
+          <Link href="/admin" className="btn-secondary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>
+            <ArrowLeft size={16} />
+            Dashboard
+          </Link>
         </div>
       </header>
 
@@ -95,7 +99,7 @@ export default async function AdminEventsPage() {
         {/* Pending Events */}
         {pendingEvents.length > 0 && (
           <div className="glass-card" style={{ padding: "24px", marginBottom: "24px" }}>
-            <h2 className="text-lg font-bold" style={{ marginBottom: "16px", color: "#f59e0b" }}>🕐 Pending Approval</h2>
+            <h2 className="text-lg font-bold inline-flex items-center gap-2" style={{ marginBottom: "16px", color: "#f59e0b" }}><Clock3 size={18} />Pending Approval</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {pendingEvents.map(renderEventRow)}
             </div>
@@ -104,7 +108,7 @@ export default async function AdminEventsPage() {
 
         {/* Approved Events */}
         <div className="glass-card" style={{ padding: "24px", marginBottom: "24px" }}>
-          <h2 className="text-lg font-bold" style={{ marginBottom: "16px", color: "#10b981" }}>✅ Approved Events</h2>
+          <h2 className="text-lg font-bold inline-flex items-center gap-2" style={{ marginBottom: "16px", color: "#10b981" }}><CheckCircle2 size={18} />Approved Events</h2>
           {approvedEvents.length === 0 ? (
             <p style={{ color: "var(--muted-foreground)", textAlign: "center", padding: "24px 0" }}>No approved events yet</p>
           ) : (
@@ -117,7 +121,7 @@ export default async function AdminEventsPage() {
         {/* Rejected Events */}
         {rejectedEvents.length > 0 && (
           <div className="glass-card" style={{ padding: "24px" }}>
-            <h2 className="text-lg font-bold" style={{ marginBottom: "16px", color: "#ef4444" }}>❌ Rejected Events</h2>
+            <h2 className="text-lg font-bold inline-flex items-center gap-2" style={{ marginBottom: "16px", color: "#ef4444" }}><XCircle size={18} />Rejected Events</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {rejectedEvents.map(renderEventRow)}
             </div>
