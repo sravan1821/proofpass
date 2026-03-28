@@ -416,6 +416,7 @@ export default function LandingPage() {
                   type="text"
                   readOnly
                   value="PP-2025-TF-00001"
+                  suppressHydrationWarning
                   className="h-12 flex-1 rounded-full border border-white/8 bg-black/20 px-5 text-sm text-white outline-none"
                 />
                 <Link href={verifyHref} className={cn(buttonVariants(), "h-12 rounded-full px-6")}>
