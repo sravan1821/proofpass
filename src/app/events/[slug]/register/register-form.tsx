@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Building2, CalendarDays, CheckCircle2, Clock3, FilePenLine, IndianRupee, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { registerForEventAction } from "../../actions";
 import Link from "next/link";
@@ -50,7 +51,10 @@ export default function RegisterForm({ event, organizer }: RegisterFormProps) {
             <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700 }}>P</div>
             <span className="font-bold text-lg">ProofPass</span>
           </Link>
-          <Link href="/events" className="btn-secondary" style={{ padding: "8px 16px", fontSize: "0.85rem" }}>← All Events</Link>
+          <Link href="/events" className="btn-secondary" style={{ padding: "8px 16px", fontSize: "0.85rem" }}>
+            <ArrowLeft size={16} />
+            All Events
+          </Link>
         </div>
       </nav>
 
@@ -65,14 +69,14 @@ export default function RegisterForm({ event, organizer }: RegisterFormProps) {
 
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
                 {[
-                  { icon: "📅", text: `${event.start_date ? new Date(event.start_date as string).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "TBA"}${event.end_date && event.end_date !== event.start_date ? ` – ${new Date(event.end_date as string).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}` : ""}` },
-                  ...(event.event_time ? [{ icon: "🕐", text: event.event_time as string }] : []),
-                  { icon: "📍", text: (event.venue_details as string) || (event.venue as string) || "Online" },
-                  ...(organizer ? [{ icon: "🏢", text: (event.org_name_display as string) || (organizer.org_name as string) || (organizer.full_name as string) }] : []),
-                  { icon: "💰", text: event.registration_fee && Number(event.registration_fee) > 0 ? `₹${event.registration_fee}` : "Free" },
+                  { icon: <CalendarDays size={16} />, text: `${event.start_date ? new Date(event.start_date as string).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "TBA"}${event.end_date && event.end_date !== event.start_date ? ` – ${new Date(event.end_date as string).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}` : ""}` },
+                  ...(event.event_time ? [{ icon: <Clock3 size={16} />, text: event.event_time as string }] : []),
+                  { icon: <MapPin size={16} />, text: (event.venue_details as string) || (event.venue as string) || "Online" },
+                  ...(organizer ? [{ icon: <Building2 size={16} />, text: (event.org_name_display as string) || (organizer.org_name as string) || (organizer.full_name as string) }] : []),
+                  { icon: <IndianRupee size={16} />, text: event.registration_fee && Number(event.registration_fee) > 0 ? `₹${event.registration_fee}` : "Free" },
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "0.9rem", color: "var(--foreground)" }}>
-                    <span>{item.icon}</span><span>{item.text}</span>
+                    <span style={{ color: "var(--primary-soft)" }}>{item.icon}</span><span>{item.text}</span>
                   </div>
                 ))}
               </div>
@@ -83,7 +87,7 @@ export default function RegisterForm({ event, organizer }: RegisterFormProps) {
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {advantages.map((a, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "0.85rem" }}>
-                        <span style={{ color: "var(--success)" }}>✓</span>
+                        <CheckCircle2 size={16} style={{ color: "var(--success)" }} />
                         <span style={{ color: "var(--foreground)" }}>{a}</span>
                       </div>
                     ))}
@@ -96,7 +100,10 @@ export default function RegisterForm({ event, organizer }: RegisterFormProps) {
           {/* Registration Form */}
           <div>
             <div className="glass-card" style={{ padding: "28px" }}>
-              <h2 className="text-lg font-bold" style={{ marginBottom: "20px" }}>📝 Register for this Event</h2>
+              <h2 className="text-lg font-bold inline-flex items-center gap-2" style={{ marginBottom: "20px" }}>
+                <FilePenLine size={20} />
+                Register for this Event
+              </h2>
 
               {error && (
                 <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "20px", color: "var(--danger)", fontSize: "0.875rem" }}>{error}</div>
@@ -125,13 +132,19 @@ export default function RegisterForm({ event, organizer }: RegisterFormProps) {
 
                 {event.registration_fee && Number(event.registration_fee) > 0 && (
                   <div style={{ padding: "14px", borderRadius: "10px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.875rem", color: "var(--warning)" }}>⚠️ Registration Fee</span>
+                    <span className="inline-flex items-center gap-2" style={{ fontSize: "0.875rem", color: "var(--warning)" }}>
+                      <AlertTriangle size={16} />
+                      Registration Fee
+                    </span>
                     <span style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--foreground)" }}>₹{event.registration_fee as number}</span>
                   </div>
                 )}
 
                 <button type="submit" className="btn-primary" disabled={loading} style={{ width: "100%", padding: "14px" }}>
-                  {loading ? "Registering..." : event.registration_fee && Number(event.registration_fee) > 0 ? "Register & Proceed to Payment →" : "Register Now →"}
+                  <span className="inline-flex items-center gap-2">
+                    {loading ? "Registering..." : event.registration_fee && Number(event.registration_fee) > 0 ? "Register & Proceed to Payment" : "Register Now"}
+                    {!loading && <ArrowRight size={16} />}
+                  </span>
                 </button>
               </form>
             </div>

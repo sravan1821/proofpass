@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { ArrowLeft, CheckCircle2, CreditCard, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { confirmPaymentAction } from "../../actions";
 import Link from "next/link";
@@ -42,13 +43,19 @@ export default function PaymentPageClient({ event, registration }: PaymentPageCl
             <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700 }}>P</div>
             <span className="font-bold text-lg">ProofPass</span>
           </Link>
-          <Link href={`/events/${event.slug}/register`} className="btn-secondary" style={{ padding: "8px 16px", fontSize: "0.85rem" }}>← Back to Registration</Link>
+          <Link href={`/events/${event.slug}/register`} className="btn-secondary" style={{ padding: "8px 16px", fontSize: "0.85rem" }}>
+            <ArrowLeft size={16} />
+            Back to Registration
+          </Link>
         </div>
       </nav>
 
       <div style={{ maxWidth: "600px", margin: "0 auto", paddingTop: "100px", padding: "100px 24px 60px" }}>
         <div className="glass-card" style={{ padding: "36px" }}>
-          <h1 className="text-2xl font-bold" style={{ marginBottom: "8px", textAlign: "center" }}>💳 Complete Payment</h1>
+          <h1 className="text-2xl font-bold inline-flex items-center justify-center gap-2" style={{ marginBottom: "8px", textAlign: "center", width: "100%" }}>
+            <CreditCard size={24} />
+            Complete Payment
+          </h1>
           <p style={{ color: "var(--muted-foreground)", marginBottom: "28px", textAlign: "center" }}>Complete your payment for <strong>{event.name as string}</strong></p>
 
           {/* Payment Summary */}
@@ -84,7 +91,7 @@ export default function PaymentPageClient({ event, registration }: PaymentPageCl
                   color: "var(--foreground)",
                 }}
               >
-                <div style={{ fontSize: "1.8rem", marginBottom: "8px" }}>📱</div>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px", color: "var(--primary-soft)" }}><Smartphone size={28} /></div>
                 <p className="font-bold" style={{ fontSize: "0.95rem", marginBottom: "2px" }}>UPI</p>
                 <p style={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>Scan QR & Pay</p>
               </button>
@@ -101,7 +108,7 @@ export default function PaymentPageClient({ event, registration }: PaymentPageCl
                   color: "var(--foreground)",
                 }}
               >
-                <div style={{ fontSize: "1.8rem", marginBottom: "8px" }}>💳</div>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px", color: "var(--primary-soft)" }}><CreditCard size={28} /></div>
                 <p className="font-bold" style={{ fontSize: "0.95rem", marginBottom: "2px" }}>Card</p>
                 <p style={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>Debit / Credit Card</p>
               </button>
@@ -175,7 +182,10 @@ export default function PaymentPageClient({ event, registration }: PaymentPageCl
             disabled={loading}
             style={{ width: "100%", padding: "14px", fontSize: "1rem" }}
           >
-            {loading ? "Confirming..." : paymentMethod === "upi" ? "✅ I Have Paid — Confirm Payment" : "✅ Pay ₹" + amount + " — Confirm Payment"}
+            <span className="inline-flex items-center gap-2">
+              <CheckCircle2 size={18} />
+              {loading ? "Confirming..." : paymentMethod === "upi" ? "I Have Paid - Confirm Payment" : "Pay ₹" + amount + " - Confirm Payment"}
+            </span>
           </button>
 
           <p style={{ fontSize: "0.75rem", color: "var(--muted-foreground)", marginTop: "16px", textAlign: "center" }}>

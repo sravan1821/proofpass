@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireApprovedOrganizer } from "@/lib/auth";
 import { createMongoServerClient } from "@/lib/db/mongo/server";
+import { CalendarDays, ClipboardList } from "lucide-react";
 import Link from "next/link";
 
 export default async function EventsListPage() {
@@ -135,11 +136,11 @@ export default async function EventsListPage() {
       {/* Active / Upcoming Events */}
       <div style={{ marginBottom: "32px" }}>
         <h2 className="font-bold mb-3" style={{ fontSize: "1.1rem", color: "var(--primary-soft)" }}>
-          📅 Active & Upcoming ({activeEvents.length})
+          <span className="inline-flex items-center gap-2"><CalendarDays size={18} />Active & Upcoming ({activeEvents.length})</span>
         </h2>
         {activeEvents.length === 0 ? (
           <div className="glass-card" style={{ padding: "40px", textAlign: "center" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: "12px" }}>📅</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "12px", color: "var(--primary-soft)" }}><CalendarDays size={36} /></div>
             <p style={{ color: "var(--muted-foreground)", marginBottom: "16px" }}>No upcoming events. Create your first event!</p>
             <Link href="/dashboard/events/new" className="btn-primary" style={{ display: "inline-flex" }}>Create Event</Link>
           </div>
@@ -154,7 +155,7 @@ export default async function EventsListPage() {
       {pastEvents.length > 0 && (
         <div>
           <h2 className="font-bold mb-3" style={{ fontSize: "1.1rem", color: "var(--muted-foreground)" }}>
-            📋 Past Events ({pastEvents.length})
+            <span className="inline-flex items-center gap-2"><ClipboardList size={18} />Past Events ({pastEvents.length})</span>
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {pastEvents.map((event) => <EventCard key={event.id} event={event} />)}

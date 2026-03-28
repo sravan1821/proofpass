@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireApprovedOrganizer } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { Inbox } from "lucide-react";
 import { notFound } from "next/navigation";
 
 export default async function FormResponsesPage({
@@ -39,7 +40,7 @@ export default async function FormResponsesPage({
 
       {(!responses || responses.length === 0) ? (
         <div className="glass-card" style={{ padding: "60px", textAlign: "center" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "16px" }}>📭</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px", color: "var(--primary-soft)" }}><Inbox size={40} /></div>
           <h3 className="text-lg font-bold mb-2">No responses yet</h3>
           <p style={{ color: "var(--muted-foreground)" }}>Share your form to start collecting responses.</p>
         </div>

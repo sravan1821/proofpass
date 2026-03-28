@@ -1,5 +1,15 @@
 import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Medal,
+  ScanSearch,
+  ScrollText,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type VerificationEvent = {
   name?: string | null;
@@ -65,11 +75,11 @@ export default async function VerifyPage({
     }
   }
 
-  const statusConfig: Record<string, { bg: string; border: string; icon: string; color: string; title: string; message: string }> = {
+  const statusConfig: Record<string, { bg: string; border: string; icon: ReactNode; color: string; title: string; message: string }> = {
     active: {
       bg: "rgba(16,185,129,0.08)",
       border: "rgba(16,185,129,0.25)",
-      icon: "✓",
+      icon: <CheckCircle2 size={40} />,
       color: "#10b981",
       title: "Certificate Verified",
       message: "This certificate is valid and verified.",
@@ -77,7 +87,7 @@ export default async function VerifyPage({
     revoked: {
       bg: "rgba(239,68,68,0.08)",
       border: "rgba(239,68,68,0.25)",
-      icon: "✕",
+      icon: <XCircle size={40} />,
       color: "#ef4444",
       title: "Certificate Revoked",
       message: "This certificate has been revoked and is no longer valid.",
@@ -85,7 +95,7 @@ export default async function VerifyPage({
     draft: {
       bg: "rgba(245,158,11,0.08)",
       border: "rgba(245,158,11,0.25)",
-      icon: "⚠",
+      icon: <AlertTriangle size={40} />,
       color: "#f59e0b",
       title: "Certificate Suspended",
       message: "This certificate has been temporarily suspended.",
@@ -95,7 +105,7 @@ export default async function VerifyPage({
   const notFoundConfig = {
     bg: "rgba(148,163,184,0.08)",
     border: "rgba(148,163,184,0.25)",
-    icon: "🔍",
+    icon: <ScanSearch size={40} />,
     color: "#94a3b8",
     title: "Certificate Not Found",
     message: "No certificate found with this ID. Please verify the ID and try again.",
@@ -105,9 +115,15 @@ export default async function VerifyPage({
   const achievementDetail = certificate?.achievement_detail?.trim();
 
   const categoryLabels: Record<string, string> = {
-    winner: "🏆 Winner",
-    runner_up: "🥈 Runner-Up",
-    participant: "📜 Participant",
+    winner: "Winner",
+    runner_up: "Runner-Up",
+    participant: "Participant",
+  };
+
+  const categoryIcons: Record<string, ReactNode> = {
+    winner: <ShieldCheck size={14} />,
+    runner_up: <Medal size={14} />,
+    participant: <ScrollText size={14} />,
   };
 
   const categoryColors: Record<string, string> = {
@@ -137,7 +153,7 @@ export default async function VerifyPage({
           textAlign: "center",
           marginBottom: "24px",
         }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: "8px" }}>{config.icon}</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px", color: config.color }}>{config.icon}</div>
           <h2 style={{ fontSize: "1.3rem", fontWeight: 700, color: config.color, marginBottom: "6px" }}>{config.title}</h2>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>{config.message}</p>
         </div>
@@ -156,7 +172,8 @@ export default async function VerifyPage({
                 color: categoryColors[certificate.category as string] || "#4f46e5",
                 background: `${categoryColors[certificate.category as string] || "#4f46e5"}15`,
                 border: `1px solid ${categoryColors[certificate.category as string] || "#4f46e5"}30`,
-              }}>
+              }} className="inline-flex items-center gap-2">
+                {categoryIcons[certificate.category as string] ?? null}
                 {categoryLabels[certificate.category as string] || "Certificate"}
               </span>
             </div>

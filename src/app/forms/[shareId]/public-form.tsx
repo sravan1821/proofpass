@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useState } from "react";
+import { Star } from "lucide-react";
 import type { FormField } from "@/lib/form-builder/types";
 
 interface PublicFormClientProps {
@@ -213,7 +214,7 @@ export function PublicFormClient({ form }: PublicFormClientProps) {
                           onClick={() => setValue(field.id, star)}
                           style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", opacity: star <= ((values[field.id] as number) || 0) ? 1 : 0.3 }}
                         >
-                          ⭐
+                          <Star size={22} fill={star <= ((values[field.id] as number) || 0) ? "#f59e0b" : "transparent"} color="#f59e0b" />
                         </button>
                       ))}
                     </div>

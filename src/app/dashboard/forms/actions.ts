@@ -4,7 +4,7 @@ import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { requireApprovedOrganizer } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { DEFAULT_FORM_SETTINGS } from "@/lib/form-builder/types";
+import { buildTemplateFields, DEFAULT_FORM_SETTINGS, type FormTemplate } from "@/lib/form-builder/types";
 
 export async function createFormAction(formData: FormData) {
   const user = await requireApprovedOrganizer();
@@ -14,6 +14,7 @@ export async function createFormAction(formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const eventId = formData.get("eventId") as string;
+  const template = ((formData.get("template") as string) || "blank") as FormTemplate;
 
   if (!title) return { error: "Form title is required." };
 
@@ -22,7 +23,7 @@ export async function createFormAction(formData: FormData) {
     event_id: eventId || null,
     title,
     description: description || null,
-    fields_json: [],
+    fields_json: buildTemplateFields(template),
     settings_json: DEFAULT_FORM_SETTINGS,
     status: "draft",
   }).select().single();

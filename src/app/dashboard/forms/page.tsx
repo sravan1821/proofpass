@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { requireApprovedOrganizer } from "@/lib/auth";
 import { createMongoServerClient } from "@/lib/db/mongo/server";
+import { FileText } from "lucide-react";
 import Link from "next/link";
 
 export default async function FormsListPage() {
@@ -34,7 +35,7 @@ export default async function FormsListPage() {
 
       {(!forms || forms.length === 0) ? (
         <div className="glass-card" style={{ padding: "60px", textAlign: "center" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "16px" }}>📝</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px", color: "var(--primary-soft)" }}><FileText size={40} /></div>
           <h3 className="text-lg font-bold mb-2">No forms yet</h3>
           <p style={{ color: "var(--muted-foreground)", marginBottom: "24px" }}>Create a form to start collecting registrations for your events.</p>
           <Link href="/dashboard/forms/new" className="btn-primary" style={{ display: "inline-flex" }}>Create Your First Form</Link>
