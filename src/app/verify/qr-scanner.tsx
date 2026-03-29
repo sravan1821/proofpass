@@ -4,10 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, CameraOff, ScanLine } from "lucide-react";
 
+const SCANNER_REGION_ID = "qr-scanner-region";
+
 export function QrScanner() {
   const router = useRouter();
   const scannerRef = useRef<HTMLDivElement>(null);
   const html5QrCodeRef = useRef<any>(null);
+  const [mounted, setMounted] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState("");
   const [scannedValue, setScannedValue] = useState("");
@@ -21,15 +24,10 @@ export function QrScanner() {
 
       if (!scannerRef.current) return;
 
-      const scannerId = "qr-scanner-region";
-      // Ensure the element exists
-      if (!document.getElementById(scannerId)) {
-        const el = document.createElement("div");
-        el.id = scannerId;
-        scannerRef.current.appendChild(el);
-      }
+      if (!document.getElementById(SCANNER_REGION_ID)) return;
+      if (html5QrCodeRef.current) return;
 
-      const html5QrCode = new Html5Qrcode(scannerId);
+      const html5QrCode = new Html5Qrcode(SCANNER_REGION_ID);
       html5QrCodeRef.current = html5QrCode;
 
       await html5QrCode.start(
@@ -81,6 +79,7 @@ export function QrScanner() {
     try {
       if (html5QrCodeRef.current) {
         await html5QrCodeRef.current.stop();
+        await html5QrCodeRef.current.clear?.();
         html5QrCodeRef.current = null;
       }
     } catch {
@@ -90,13 +89,48 @@ export function QrScanner() {
   }
 
   useEffect(() => {
+    setMounted(true);
+
     return () => {
-      // Cleanup on unmount
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(() => {});
+      const qrInstance = html5QrCodeRef.current;
+      html5QrCodeRef.current = null;
+
+      if (qrInstance) {
+        qrInstance
+          .stop()
+          .catch(() => {})
+          .finally(() => {
+            if (typeof qrInstance.clear === "function") {
+              Promise.resolve(qrInstance.clear()).catch(() => {});
+            }
+          });
       }
     };
   }, []);
+
+  if (!mounted) {
+    return (
+      <div suppressHydrationWarning>
+        <div
+          style={{
+            position: "relative",
+            borderRadius: "12px",
+            overflow: "hidden",
+            background: "rgba(0,0,0,0.25)",
+            minHeight: "160px",
+            border: "1px dashed rgba(255,255,255,0.12)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--muted-foreground)",
+            fontSize: "0.82rem",
+          }}
+        >
+          Camera scanner loading…
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -111,6 +145,7 @@ export function QrScanner() {
           minHeight: scanning ? "280px" : "0px",
         }}
       >
+        <div id={SCANNER_REGION_ID} style={{ width: "100%", minHeight: scanning ? "280px" : "0px" }} />
         {scanning && (
           <div
             style={{
@@ -176,6 +211,7 @@ export function QrScanner() {
 
       {/* Toggle button */}
       <button
+        type="button"
         onClick={scanning ? stopScanner : startScanner}
         style={{
           marginTop: "14px",

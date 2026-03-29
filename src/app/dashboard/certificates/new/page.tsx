@@ -1,5 +1,5 @@
-import { PrototypeFrame } from "@/components/shared/prototype-frame";
+import { redirect } from "next/navigation";
 
 export default function NewCertificatePage() {
-  return <PrototypeFrame src="/prototype/issue.html" title="ProofPass Issue" />;
+  redirect("/dashboard/certificates");
 }
