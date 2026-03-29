@@ -1,14 +1,65 @@
 "use server";
 
-import { createMongoServerClient } from "@/lib/db/mongo/server";
-import { requireApprovedOrganizer } from "@/lib/auth";
-import { getAppBaseUrl, getOrganizerSmtpSettings, sendOrganizerEmail } from "@/lib/mail/organizer-mail";
+import { randomUUID } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
-import { CERTIFICATE_TEMPLATES } from "@/lib/certificates/templates";
+import QRCode from "qrcode";
+
+import { requireApprovedOrganizer } from "@/lib/auth";
+import {
+  buildCertificateValueMap,
+  guessTemplateAssetType,
+  parseTemplateLayout,
+  type CertificateTemplateLayout,
+} from "@/lib/certificates/fields";
+import { mapCustomCertificateTemplate, CERTIFICATE_TEMPLATES, type CertificateTemplate } from "@/lib/certificates/templates";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
+import { getAppBaseUrl, getOrganizerSmtpSettings, sendOrganizerEmail } from "@/lib/mail/organizer-mail";
 
 async function fileToDataUrl(file: File) {
   const buffer = Buffer.from(await file.arrayBuffer());
   return `data:${file.type};base64,${buffer.toString("base64")}`;
+}
+
+function normalizeName(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function normalizeEmail(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function getSecondarySignatory(layout?: CertificateTemplateLayout | null) {
+  return layout?.meta?.secondSignatory ?? null;
+}
+
+function buildTemplateSnapshot(template: CertificateTemplate) {
+  return {
+    id: template.id,
+    name: template.name,
+    source: template.source,
+    label: template.label,
+    accent: template.accent,
+    frame: template.frame,
+    paper: template.paper,
+    ink: template.ink,
+    badge: template.badge,
+    sampleRecipient: template.sampleRecipient,
+    sampleAchievement: template.sampleAchievement,
+    assetType: template.assetType,
+    assetDataUrl: template.assetDataUrl ?? template.pdfDataUrl,
+    assetName: template.assetName ?? template.pdfName,
+    signatureDataUrl: template.signatureDataUrl,
+    signerName: template.signerName,
+    signerTitle: template.signerTitle,
+    signature2DataUrl: template.signature2DataUrl,
+    signer2Name: template.signer2Name,
+    signer2Title: template.signer2Title,
+    layout: template.layout,
+  };
 }
 
 export async function upsertCustomCertificateTemplateAction(formData: FormData) {
@@ -18,8 +69,12 @@ export async function upsertCustomCertificateTemplateAction(formData: FormData) 
 
   const templateId = String(formData.get("templateId") || "");
   const name = String(formData.get("name") || "").trim();
-  const pdfFile = formData.get("pdfFile") as File | null;
+  const templateFile = formData.get("templateFile") as File | null;
   const signatureFile = formData.get("signatureFile") as File | null;
+  const signatureFile2 = formData.get("signatureFile2") as File | null;
+  const layout =
+    parseTemplateLayout(formData.get("layoutJson")) ??
+    ({ version: 1 as const, aspectRatio: 1.414, placements: [], meta: {} } satisfies CertificateTemplateLayout);
 
   if (!name) return { error: "Template name is required." };
 
@@ -37,33 +92,98 @@ export async function upsertCustomCertificateTemplateAction(formData: FormData) 
     if (!existing) return { error: "Template not found." };
   }
 
-  if (!isEdit && (!pdfFile || pdfFile.size === 0)) {
-    return { error: "A PDF file is required." };
+  const hiddenAssetDataUrl = String(formData.get("assetDataUrl") || "").trim();
+  const hiddenAssetName = String(formData.get("assetName") || "").trim();
+  const hiddenAssetType = String(formData.get("assetType") || "").trim();
+  const hiddenSignatureDataUrl = String(formData.get("signatureDataUrl") || "").trim();
+  const hiddenSignature2DataUrl = String(formData.get("signature2DataUrl") || "").trim();
+
+  if (
+    !isEdit &&
+    (!templateFile || templateFile.size === 0) &&
+    !hiddenAssetDataUrl
+  ) {
+    return { error: "A certificate template file is required." };
   }
 
-  if (pdfFile && pdfFile.size > 8 * 1024 * 1024) {
-    return { error: "PDF file is too large. Keep it under 8 MB." };
+  const acceptedTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+  if (templateFile && templateFile.size > 0 && !acceptedTypes.includes(templateFile.type)) {
+    return { error: "Upload a PDF, PNG, JPG, or WEBP certificate template." };
+  }
+
+  if (templateFile && templateFile.size > 10 * 1024 * 1024) {
+    return { error: "Template file is too large. Keep it under 10 MB." };
   }
 
   if (signatureFile && signatureFile.size > 3 * 1024 * 1024) {
     return { error: "Signature image is too large. Keep it under 3 MB." };
   }
 
+  if (signatureFile2 && signatureFile2.size > 3 * 1024 * 1024) {
+    return { error: "Second signature image is too large. Keep it under 3 MB." };
+  }
+
+  const existingLayout = parseTemplateLayout(existing?.layout_json);
+
+  const assetDataUrl =
+    templateFile && templateFile.size > 0
+      ? await fileToDataUrl(templateFile)
+      : hiddenAssetDataUrl || String(existing?.template_asset_data_url || existing?.pdf_data_url || "");
+
+  const assetName =
+    templateFile && templateFile.size > 0
+      ? templateFile.name
+      : hiddenAssetName || String(existing?.template_asset_name || existing?.pdf_name || "");
+
+  const assetType =
+    templateFile && templateFile.size > 0
+      ? guessTemplateAssetType(templateFile.type)
+      : guessTemplateAssetType(hiddenAssetType || String(existing?.template_asset_type || ""), assetDataUrl);
+
+  const signatureDataUrl =
+    signatureFile && signatureFile.size > 0
+      ? await fileToDataUrl(signatureFile)
+      : hiddenSignatureDataUrl || String(existing?.signature_data_url || "");
+
+  const secondSignatory = {
+    name: String(formData.get("signer2Name") || getSecondarySignatory(existingLayout)?.name || ""),
+    title: String(formData.get("signer2Title") || getSecondarySignatory(existingLayout)?.title || ""),
+    signatureDataUrl:
+      signatureFile2 && signatureFile2.size > 0
+        ? await fileToDataUrl(signatureFile2)
+        : hiddenSignature2DataUrl || String(getSecondarySignatory(existingLayout)?.signatureDataUrl || ""),
+  };
+
+  const layoutWithMeta: CertificateTemplateLayout = {
+    ...layout,
+    meta: {
+      ...(layout.meta ?? {}),
+      secondSignatory:
+        secondSignatory.name || secondSignatory.title || secondSignatory.signatureDataUrl
+          ? secondSignatory
+          : undefined,
+    },
+  };
+
   const payload = {
     organizer_id: user.id,
     name,
     source: "custom",
-    pdf_name: pdfFile && pdfFile.size > 0 ? pdfFile.name : String(existing?.pdf_name || ""),
-    pdf_data_url: pdfFile && pdfFile.size > 0 ? await fileToDataUrl(pdfFile) : String(existing?.pdf_data_url || ""),
-    signature_data_url: signatureFile && signatureFile.size > 0 ? await fileToDataUrl(signatureFile) : String(existing?.signature_data_url || ""),
+    template_asset_name: assetName,
+    template_asset_data_url: assetDataUrl,
+    template_asset_type: assetType,
+    pdf_name: assetType === "pdf" ? assetName : String(existing?.pdf_name || ""),
+    pdf_data_url: assetType === "pdf" ? assetDataUrl : String(existing?.pdf_data_url || ""),
+    signature_data_url: signatureDataUrl,
     signer_name: String(formData.get("signerName") || ""),
     signer_title: String(formData.get("signerTitle") || ""),
-    placeholder_recipient_name: String(formData.get("placeholderRecipientName") || "{{recipient_name}}"),
-    placeholder_achievement: String(formData.get("placeholderAchievement") || "{{achievement}}"),
-    placeholder_event_name: String(formData.get("placeholderEventName") || "{{event_name}}"),
-    placeholder_organization_name: String(formData.get("placeholderOrganizationName") || "{{organization_name}}"),
-    placeholder_certificate_id: String(formData.get("placeholderCertificateId") || "{{certificate_id}}"),
-    placeholder_issue_date: String(formData.get("placeholderIssueDate") || "{{issue_date}}"),
+    layout_json: layoutWithMeta,
+    placeholder_recipient_name: "{{recipient_name}}",
+    placeholder_achievement: "{{achievement}}",
+    placeholder_event_name: "{{event_name}}",
+    placeholder_organization_name: "{{organization_name}}",
+    placeholder_certificate_id: "{{certificate_id}}",
+    placeholder_issue_date: "{{issue_date}}",
   };
 
   if (isEdit) {
@@ -88,8 +208,8 @@ export async function issueCertificatesAction(eventId: string, templateId: strin
   const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
 
-  const builtInTemplate = CERTIFICATE_TEMPLATES.find((item) => item.id === templateId);
-  const customTemplate = builtInTemplate
+  const builtInTemplate = CERTIFICATE_TEMPLATES.find((item) => item.id === templateId) ?? null;
+  const customTemplateRecord = builtInTemplate
     ? null
     : await supabase
         .from("certificate_templates")
@@ -98,10 +218,15 @@ export async function issueCertificatesAction(eventId: string, templateId: strin
         .eq("organizer_id", user.id)
         .single();
 
-  const template = builtInTemplate ?? (customTemplate?.data as Record<string, unknown> | null);
+  const template =
+    builtInTemplate ??
+    (customTemplateRecord?.data ? mapCustomCertificateTemplate(customTemplateRecord.data as Record<string, unknown>) : null);
   if (!template) return { error: "Template not found." };
 
-  // Get event
+  if (template.source === "custom" && (!template.layout?.placements || template.layout.placements.length === 0)) {
+    return { error: "Place at least one field on the custom template before bulk issuing certificates." };
+  }
+
   const { data: event } = await supabase
     .from("events")
     .select("*")
@@ -111,85 +236,176 @@ export async function issueCertificatesAction(eventId: string, templateId: strin
 
   if (!event) return { error: "Event not found." };
 
-  // Get participants
-  const { data: participants } = await supabase
+  const { data: registrationsData } = await supabase
+    .from("event_registrations")
+    .select("*")
+    .eq("event_id", eventId)
+    .order("created_at", { ascending: true });
+
+  const { data: participantsData } = await supabase
     .from("participants")
     .select("*")
     .eq("event_id", eventId);
 
-  if (!participants || participants.length === 0) {
-    return { error: "No participants to issue certificates for." };
+  const registrations = (registrationsData as Array<Record<string, unknown>> | null) ?? [];
+  const participants = (participantsData as Array<Record<string, unknown>> | null) ?? [];
+
+  const recipients =
+    registrations.length > 0
+      ? registrations
+      : participants.map((participant) => ({
+          id: participant.id,
+          full_name: participant.full_name,
+          email: participant.email,
+          phone: null,
+          college_name: null,
+          receipt_number: null,
+          category: participant.category,
+        }));
+
+  if (recipients.length === 0) {
+    return { error: "No registered users were found for this event." };
+  }
+
+  const participantMap = new Map<string, Record<string, unknown>>();
+  for (const participant of participants) {
+    const email = normalizeEmail(participant.email);
+    const fullName = normalizeName(participant.full_name);
+    if (email) participantMap.set(`email:${email}`, participant);
+    if (fullName) participantMap.set(`name:${fullName}`, participant);
   }
 
   const year = new Date().getFullYear();
-  const eventCode = event.event_code || event.name.replace(/[^A-Z]/gi, "").slice(0, 4).toUpperCase() || "EV";
+  const eventCode =
+    String(event.event_code || "").trim() ||
+    String(event.name || "")
+      .replace(/[^A-Z]/gi, "")
+      .slice(0, 4)
+      .toUpperCase() ||
+    "EV";
 
-  // Get the current max sequence number for this event
   const { data: existingCerts } = await supabase
     .from("certificates")
-    .select("certificate_id_display")
+    .select("registration_id, recipient_email, recipient_name, certificate_id_display")
     .eq("event_id", eventId);
 
-  let seqNum = (existingCerts?.length || 0) + 1;
+  const existingCertificates = (existingCerts as Array<Record<string, unknown>> | null) ?? [];
+  const existingRegistrationIds = new Set(existingCertificates.map((item) => String(item.registration_id || "")).filter(Boolean));
+  const existingEmails = new Set(existingCertificates.map((item) => normalizeEmail(item.recipient_email)).filter(Boolean));
+  const existingNames = new Set(existingCertificates.map((item) => normalizeName(item.recipient_name)).filter(Boolean));
 
-  const certificatesToInsert = [];
+  let seqNum = existingCertificates.length + 1;
+
+  const certificatesToInsert: Array<Record<string, unknown>> = [];
   const certificateEmailQueue: Array<{ to: string; name: string; verifyUrl: string; eventName: string; certId: string }> = [];
 
-  for (const participant of participants) {
-    // Check if certificate already exists for this participant + event
-    const { data: existing } = await supabase
-      .from("certificates")
-      .select("id")
-      .eq("event_id", eventId)
-      .eq("recipient_name", participant.full_name)
-      .limit(1);
+  for (const registration of recipients) {
+    const registrationId = String(registration.id || "");
+    const email = normalizeEmail(registration.email);
+    const fullName = normalizeName(registration.full_name);
 
-    if (existing && existing.length > 0) continue; // Skip duplicates
+    if (
+      (registrationId && existingRegistrationIds.has(registrationId)) ||
+      (email && existingEmails.has(email)) ||
+      (fullName && existingNames.has(fullName))
+    ) {
+      continue;
+    }
+
+    const linkedParticipant =
+      participantMap.get(email ? `email:${email}` : "") ??
+      participantMap.get(fullName ? `name:${fullName}` : "") ??
+      null;
 
     const certIdDisplay = `PP-${year}-${eventCode}-${String(seqNum).padStart(5, "0")}`;
-    const verificationUrl = `/verify/${certIdDisplay}`;
-    const tokenHash = Buffer.from(certIdDisplay + Date.now()).toString("base64url");
+    const verificationPath = `/verify/${encodeURIComponent(certIdDisplay)}`;
+    const verificationUrl = `${getAppBaseUrl()}${verificationPath}`;
+    const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
+      margin: 1,
+      width: 240,
+      errorCorrectionLevel: "M",
+    });
+    const tokenHash = Buffer.from(certIdDisplay + Date.now() + seqNum).toString("base64url");
+    const certificateRecordId = randomUUID();
+    const issuedAt = new Date().toISOString();
+    const organizationName =
+      user.orgName ||
+      (typeof event.org_name_display === "string" && event.org_name_display) ||
+      "ProofPass";
+
+    const fieldValues = buildCertificateValueMap({
+      registration,
+      participant: linkedParticipant,
+      event,
+      organizationName,
+      certificateId: certIdDisplay,
+      issueDate: issuedAt,
+      verificationUrl,
+      signerName: template.signerName ?? null,
+      signerTitle: template.signerTitle ?? null,
+      signatureDataUrl: template.signatureDataUrl ?? null,
+      signer2Name: template.signer2Name ?? null,
+      signer2Title: template.signer2Title ?? null,
+      signature2DataUrl: template.signature2DataUrl ?? null,
+    });
+    fieldValues.verification_qr = qrCodeDataUrl;
 
     certificatesToInsert.push({
+      id: certificateRecordId,
       event_id: eventId,
       organizer_id: user.id,
+      registration_id: registrationId || null,
       serial_number: certIdDisplay,
       certificate_id_display: certIdDisplay,
       token_hash: tokenHash,
-      recipient_name: participant.full_name,
-      recipient_email: participant.email,
-      category: participant.category || "participant",
-      achievement_detail: participant.achievement_detail,
-      organization_name: user.orgName,
+      recipient_name: registration.full_name,
+      recipient_email: registration.email,
+      recipient_phone: registration.phone || null,
+      recipient_organization: registration.college_name || null,
+      category: String(linkedParticipant?.category || registration.category || "participant"),
+      achievement_detail: String(
+        linkedParticipant?.achievement_detail ||
+          (linkedParticipant?.category === "winner"
+            ? "Winner"
+            : linkedParticipant?.category === "runner_up"
+              ? "Runner-Up"
+              : "Participant") ||
+          "Participant",
+      ),
+      organization_name: organizationName,
       organization_logo_url: user.orgLogoUrl,
-      template_id: template.id as string,
-      template_name: template.name as string,
+      template_id: template.id,
+      template_name: template.name,
       template_source: builtInTemplate ? "built_in" : "custom",
+      template_snapshot_json: buildTemplateSnapshot(template),
+      field_values_json: fieldValues,
       verification_url: verificationUrl,
-      qr_code_data: verificationUrl,
+      qr_code_data: qrCodeDataUrl,
       status: "active",
-      issued_at: new Date().toISOString(),
+      issued_at: issuedAt,
     });
 
-    if (participant.email) {
+    if (email) {
       certificateEmailQueue.push({
-        to: participant.email,
-        name: participant.full_name,
-        verifyUrl: `${getAppBaseUrl()}${verificationUrl}`,
-        eventName: event.name,
+        to: email,
+        name: String(registration.full_name || "Participant"),
+        verifyUrl: verificationUrl,
+        eventName: String(event.name || "your event"),
         certId: certIdDisplay,
       });
     }
 
-    seqNum++;
+    if (registrationId) existingRegistrationIds.add(registrationId);
+    if (email) existingEmails.add(email);
+    if (fullName) existingNames.add(fullName);
+    seqNum += 1;
   }
 
   if (certificatesToInsert.length === 0) {
-    return { error: "All participants already have certificates." };
+    return { error: "All registered users for this event already have certificates." };
   }
 
   const { error } = await supabase.from("certificates").insert(certificatesToInsert);
-
   if (error) return { error: error.message };
 
   const organizerSmtp = await getOrganizerSmtpSettings(user.id);
