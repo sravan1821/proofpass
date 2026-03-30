@@ -6,6 +6,13 @@ import { sendOrganizerEmail } from "@/lib/mail/organizer-mail";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+type EventRegistrationRecord = {
+  id: string;
+  full_name?: string | null;
+  email?: string | null;
+  payment_status?: string | null;
+};
+
 export async function createEventAction(formData: FormData) {
   const user = await requireApprovedOrganizer();
   const supabase = await createMongoServerClient();
@@ -165,7 +172,7 @@ export async function sendEventUpdateEmailAction(eventId: string, subject: strin
     .select("*")
     .eq("event_id", eventId);
 
-  const recipients = (registrations || []).filter((registration: any) => {
+  const recipients = ((registrations as EventRegistrationRecord[] | null) || []).filter((registration) => {
     if (!registration.email) return false;
     if (audience === "paid") return registration.payment_status === "paid";
     if (audience === "pending") return registration.payment_status !== "paid";
@@ -227,7 +234,7 @@ export async function saveOverviewParticipantsAction(
   // Delete existing participants for this event so we can re-create fresh
   await supabase.from("participants").delete().eq("event_id", eventId);
 
-  const participantsToInsert = registrations.map((reg: any) => {
+  const participantsToInsert = (registrations as EventRegistrationRecord[]).map((reg) => {
     let category = "participant";
     if (reg.id === winnerId) category = "winner";
     else if (reg.id === runnerId) category = "runner_up";
@@ -252,4 +259,133 @@ export async function saveOverviewParticipantsAction(
   revalidatePath(`/dashboard/events/${eventId}`);
   revalidatePath("/dashboard/certificates");
   return { success: true, count: participantsToInsert.length };
+}
+
+export async function checkInParticipantAction(registrationId: string, eventId: string) {
+  const user = await requireApprovedOrganizer();
+  const supabase = await createMongoServerClient();
+  if (!supabase) return { error: "Service unavailable" };
+
+  // Verify event belongs to user
+  const { data: event } = await supabase
+    .from("events")
+    .select("id")
+    .eq("id", eventId)
+    .eq("organizer_id", user.id)
+    .single();
+
+  if (!event) return { error: "Event not found." };
+
+  const { error } = await supabase
+    .from("event_registrations")
+    .update({
+      checked_in: true,
+      checked_in_at: new Date().toISOString(),
+    })
+    .eq("id", registrationId)
+    .eq("event_id", eventId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/certificates");
+  return { success: true };
+}
+
+export async function checkOutParticipantAction(registrationId: string, eventId: string) {
+  const user = await requireApprovedOrganizer();
+  const supabase = await createMongoServerClient();
+  if (!supabase) return { error: "Service unavailable" };
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("id")
+    .eq("id", eventId)
+    .eq("organizer_id", user.id)
+    .single();
+
+  if (!event) return { error: "Event not found." };
+
+  const { error } = await supabase
+    .from("event_registrations")
+    .update({
+      checked_in: false,
+      checked_in_at: null,
+    })
+    .eq("id", registrationId)
+    .eq("event_id", eventId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/certificates");
+  return { success: true };
+}
+
+export async function bulkCheckInAction(eventId: string, registrationIds: string[]) {
+  const user = await requireApprovedOrganizer();
+  const supabase = await createMongoServerClient();
+  if (!supabase) return { error: "Service unavailable" };
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("id")
+    .eq("id", eventId)
+    .eq("organizer_id", user.id)
+    .single();
+
+  if (!event) return { error: "Event not found." };
+
+  let count = 0;
+  const now = new Date().toISOString();
+  for (const regId of registrationIds) {
+    const { error } = await supabase
+      .from("event_registrations")
+      .update({
+        checked_in: true,
+        checked_in_at: now,
+      })
+      .eq("id", regId)
+      .eq("event_id", eventId);
+    if (!error) count++;
+  }
+
+  revalidatePath("/dashboard/certificates");
+  return { success: true, count };
+}
+
+export async function updateRegistrationDetailsAction(
+  registrationId: string,
+  eventId: string,
+  fullName: string,
+  email: string
+) {
+  const user = await requireApprovedOrganizer();
+  const supabase = await createMongoServerClient();
+  if (!supabase) return { error: "Service unavailable" };
+
+  // Verify event belongs to user
+  const { data: event } = await supabase
+    .from("events")
+    .select("id")
+    .eq("id", eventId)
+    .eq("organizer_id", user.id)
+    .single();
+
+  if (!event) return { error: "Event not found." };
+
+  if (!fullName.trim()) return { error: "Name is required." };
+
+  const { error } = await supabase
+    .from("event_registrations")
+    .update({
+      full_name: fullName.trim(),
+      email: email.trim() || null,
+    })
+    .eq("id", registrationId)
+    .eq("event_id", eventId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/certificates");
+  revalidatePath(`/dashboard/events/${eventId}`);
+  return { success: true };
 }

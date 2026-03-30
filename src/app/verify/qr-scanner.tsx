@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, CameraOff, ScanLine } from "lucide-react";
+import type { Html5Qrcode } from "html5-qrcode";
 
 const SCANNER_REGION_ID = "qr-scanner-region";
 
 export function QrScanner() {
   const router = useRouter();
   const scannerRef = useRef<HTMLDivElement>(null);
-  const html5QrCodeRef = useRef<any>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const [mounted, setMounted] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState("");

@@ -2,33 +2,47 @@ import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
-  CalendarDays,
-  Clock,
   Layers3,
-  MapPin,
   ScanSearch,
   ShieldCheck,
   Sparkles,
   Tag,
-  Users,
 } from "lucide-react";
 
+import { LandingEventCard } from "@/components/landing-event-card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { QrScanner } from "@/app/verify/qr-scanner";
+import { createMongoServerClient } from "@/lib/db/mongo/server";
 
 const verifyHref = "/verify/active-demo-token";
 
 const navItems = [
   { href: "/", label: "Home" },
-  { href: "/events", label: "Events" },
+  { href: "/#events", label: "Events" },
   { href: verifyHref, label: "Verify" },
   { href: "/sign-in", label: "Login" },
 ];
 
+const categoryColorMap: Record<string, string> = {
+  hackathon: "#818cf8", workshop: "#10b981", seminar: "#f59e0b",
+  conference: "#3b82f6", competition: "#ef4444", webinar: "#8b5cf6", other: "#6b7280",
+};
+
+const categoryGradientMap: Record<string, string> = {
+  hackathon: "linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)",
+  workshop: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+  seminar: "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
+  conference: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+  competition: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+  webinar: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+  other: "linear-gradient(135deg, #6b7280 0%, #374151 100%)",
+};
+
 const sampleEvents = [
   {
     id: "demo-1",
+    slug: "techfest-2026",
     name: "TechFest 2026",
     description: "A premier tech festival featuring hackathons, workshops, and keynotes from industry leaders.",
     category: "Hackathon",
@@ -43,6 +57,7 @@ const sampleEvents = [
   },
   {
     id: "demo-2",
+    slug: "design-thinking-seminar",
     name: "Design Thinking Masterclass",
     description: "Learn human-centered design principles with interactive exercises and real case studies.",
     category: "Seminar",
@@ -57,6 +72,7 @@ const sampleEvents = [
   },
   {
     id: "demo-3",
+    slug: "cloud-computing-webinar",
     name: "Cloud Computing Deep Dive",
     description: "AWS, Azure, and GCP compared. Learn cloud architecture, deployment, and cost optimization.",
     category: "Webinar",
@@ -69,157 +85,8 @@ const sampleEvents = [
     gradient: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
     catColor: "#8b5cf6",
   },
-  {
-    id: "demo-4",
-    name: "AI & Machine Learning Workshop",
-    description: "Hands-on workshop covering deep learning, NLP, and computer vision with real-world projects.",
-    category: "Workshop",
-    startDate: "20 Apr 2026",
-    time: "10:00 AM - 4:00 PM",
-    venue: "Online (Zoom)",
-    fee: 0,
-    org: "AI Research Lab",
-    advantages: ["Free", "Certificate", "Project-Based Learning"],
-    gradient: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
-    catColor: "#10b981",
-  },
-  {
-    id: "demo-5",
-    name: "Startup Summit 2026",
-    description: "Connect with founders, VCs, and mentors. Pitch your startup idea and win seed funding.",
-    category: "Conference",
-    startDate: "5 May 2026 – 6 May",
-    time: "11:00 AM - 7:00 PM",
-    venue: "Hyderabad Convention Centre",
-    fee: 499,
-    org: "Startup India Hub",
-    advantages: ["Investor Access", "Mentorship", "Startup Kit"],
-    gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-    catColor: "#3b82f6",
-  },
-  {
-    id: "demo-6",
-    name: "CyberSec CTF Challenge",
-    description: "Capture The Flag competition testing your cybersecurity skills across web, forensics, and crypto.",
-    category: "Competition",
-    startDate: "28 Apr 2026",
-    time: "6:00 PM - 12:00 AM",
-    venue: "Online",
-    fee: 0,
-    org: "CyberShield Club",
-    advantages: ["Prizes Worth ₹50K", "Certificate", "Industry Recognition"],
-    gradient: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
-    catColor: "#ef4444",
-  },
 ];
 
-function EventCard({ event }: { event: (typeof sampleEvents)[number] }) {
-  return (
-    <div className="event-card">
-      {/* Gradient top bar */}
-      <div style={{ height: "5px", background: event.gradient }} />
-      <div style={{ padding: "22px 24px" }}>
-        {/* Category + Price */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
-          <span
-            style={{
-              padding: "4px 14px",
-              borderRadius: "20px",
-              background: `${event.catColor}18`,
-              border: `1px solid ${event.catColor}35`,
-              fontSize: "0.72rem",
-              fontWeight: 600,
-              color: event.catColor,
-              textTransform: "capitalize",
-            }}
-          >
-            {event.category}
-          </span>
-          <span
-            style={{
-              fontSize: "0.92rem",
-              color: event.fee > 0 ? "var(--foreground)" : "#10b981",
-              fontWeight: 700,
-            }}
-          >
-            {event.fee > 0 ? `₹${event.fee}` : "FREE"}
-          </span>
-        </div>
-
-        {/* Title */}
-        <h3 style={{ fontSize: "1.12rem", fontWeight: 700, marginBottom: "8px", color: "white" }}>
-          {event.name}
-        </h3>
-
-        {/* Description */}
-        <p
-          style={{
-            fontSize: "0.82rem",
-            color: "var(--muted-foreground)",
-            marginBottom: "14px",
-            lineHeight: 1.6,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical" as const,
-            overflow: "hidden",
-          }}
-        >
-          {event.description}
-        </p>
-
-        {/* Event details */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "7px", marginBottom: "14px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
-            <CalendarDays size={13} style={{ color: event.catColor, flexShrink: 0 }} />
-            <span>{event.startDate}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
-            <Clock size={13} style={{ color: event.catColor, flexShrink: 0 }} />
-            <span>{event.time}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
-            <MapPin size={13} style={{ color: event.catColor, flexShrink: 0 }} />
-            <span>{event.venue}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
-            <Users size={13} style={{ color: event.catColor, flexShrink: 0 }} />
-            <span>{event.org}</span>
-          </div>
-        </div>
-
-        {/* Advantages */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
-          {event.advantages.map((adv) => (
-            <span
-              key={adv}
-              style={{
-                padding: "3px 10px",
-                borderRadius: "16px",
-                background: "rgba(16,185,129,0.08)",
-                border: "1px solid rgba(16,185,129,0.15)",
-                fontSize: "0.7rem",
-                color: "#10b981",
-              }}
-            >
-              ✓ {adv}
-            </span>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: "0.76rem", color: "var(--muted-foreground)" }}>Sample Event</span>
-          <span
-            className="btn-primary"
-            style={{ padding: "8px 18px", fontSize: "0.82rem", borderRadius: "10px" }}
-          >
-            Register →
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const steps = [
   {
@@ -239,9 +106,68 @@ const steps = [
   },
 ];
 
-export default function LandingPage() {
-  // Duplicate events for seamless infinite scroll
-  const carouselEvents = [...sampleEvents, ...sampleEvents];
+export default async function LandingPage() {
+  // Fetch real events from DB
+  let displayEvents = sampleEvents;
+  let isDemo = true;
+
+  const supabase = await createMongoServerClient();
+  if (supabase) {
+    // Only fetch approved, published/active events whose end_date (or start_date) >= today
+    const todayStr = new Date().toISOString().split("T")[0];
+    const { data } = await supabase
+      .from("events")
+      .select("*, profiles!events_organizer_id_fkey(org_name, full_name)")
+      .eq("admin_approval", "approved")
+      .in("status", ["published", "active"])
+      .gte("end_date", todayStr)
+      .order("start_date", { ascending: true });
+
+    // Also auto-mark completed events in the background (fire & forget)
+    supabase
+      .from("events")
+      .update({ status: "completed" })
+      .in("status", ["published", "active"])
+      .lt("end_date", todayStr)
+      .then(() => {});
+
+    if (data && data.length > 0) {
+      isDemo = false;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      displayEvents = (data as any[]).map((evt: any) => {
+        const cat = String(evt.category || "other").toLowerCase();
+        const startDate = evt.start_date
+          ? new Date(String(evt.start_date)).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+          : "TBA";
+        const endDate = evt.end_date && evt.end_date !== evt.start_date
+          ? ` – ${new Date(String(evt.end_date)).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+          : "";
+
+        // Determine if event is ongoing (started but not ended)
+        const now = new Date();
+        const evtStart = evt.start_date ? new Date(String(evt.start_date)) : null;
+        const evtEnd = evt.end_date ? new Date(String(evt.end_date)) : evtStart;
+        const isOngoing = evtStart && evtEnd && evtStart <= now && evtEnd >= now;
+
+        return {
+          id: String(evt.id),
+          slug: String(evt.slug),
+          name: String(evt.name),
+          description: String(evt.description || ""),
+          category: cat.charAt(0).toUpperCase() + cat.slice(1),
+          startDate: `${startDate}${endDate}`,
+          time: String(evt.event_time || ""),
+          venue: String(evt.venue_details || evt.venue || "Online"),
+          fee: Number(evt.registration_fee || 0),
+          org: String(evt.org_name_display || evt.profiles?.org_name || evt.profiles?.full_name || "Organizer"),
+          advantages: (evt.advantages as string[]) || [],
+          gradient: categoryGradientMap[cat] || categoryGradientMap.other,
+          catColor: categoryColorMap[cat] || categoryColorMap.other,
+          isOngoing: Boolean(isOngoing),
+        };
+      });
+    }
+  }
 
   return (
     <main className="relative overflow-x-hidden">
@@ -321,20 +247,31 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Auto-Scrolling Events Carousel ── */}
-      <section className="w-full pb-14 sm:pb-18 lg:pb-22">
+      {/* ── Events Grid (Static, no auto-scroll) ── */}
+      <section id="events" className="w-full pb-14 sm:pb-18 lg:pb-22 scroll-mt-28">
         <div className="mx-auto max-w-3xl px-5 text-center sm:px-6 lg:px-8" style={{ marginBottom: "36px" }}>
-          <p className="text-[0.72rem] font-medium uppercase tracking-[0.3em] text-violet-100">Upcoming Events</p>
+          <p className="text-[0.72rem] font-medium uppercase tracking-[0.3em] text-violet-100">Upcoming & Ongoing Events</p>
           <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">Discover & Register</h2>
           <p className="mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]">
             Browse upcoming events, register as a participant, and collect your verified credentials.
           </p>
         </div>
 
-        <div className="events-carousel">
-          <div className="events-carousel-track">
-            {carouselEvents.map((event, index) => (
-              <EventCard key={`${event.id}-${index}`} event={event} />
+        {isDemo && (
+          <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8" style={{ marginBottom: "20px" }}>
+            <div style={{ padding: "12px 20px", borderRadius: "10px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", display: "flex", alignItems: "center", gap: "10px" }}>
+              <span>📋</span>
+              <p style={{ fontSize: "0.8rem", color: "#f59e0b", margin: 0 }}>
+                <strong>Sample events</strong> — Create events from the organizer dashboard to see your real events here.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "24px" }}>
+            {displayEvents.map((event) => (
+              <LandingEventCard key={event.id} event={event} isDemo={isDemo} />
             ))}
           </div>
         </div>

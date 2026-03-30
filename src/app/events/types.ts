@@ -30,8 +30,11 @@ export interface EventRegistrationRecord {
   email: string;
   phone?: string | null;
   college_name?: string | null;
+  team_size?: number | null;
   payment_status: "pending" | "paid" | string;
   payment_ref?: string | null;
   receipt_number?: string | null;
   registered_at?: string | null;
+  checked_in?: boolean | null;
+  checked_in_at?: string | null;
 }

@@ -14,6 +14,17 @@ export async function registerForEventAction(formData: FormData) {
   const phone = formData.get("phone") as string;
   const collegeName = formData.get("collegeName") as string;
 
+  const teamSize = parseInt(formData.get("teamSize") as string) || 1;
+  const teamMembersRaw = formData.get("teamMembers") as string;
+  let teamMembers: Array<{ name: string; email: string }> = [];
+  if (teamMembersRaw) {
+    try {
+      teamMembers = JSON.parse(teamMembersRaw);
+    } catch {
+      // ignore parse errors
+    }
+  }
+
   if (!eventId || !fullName || !email) {
     return { error: "Name and email are required." };
   }
@@ -57,8 +68,11 @@ export async function registerForEventAction(formData: FormData) {
       email,
       phone: phone || null,
       college_name: collegeName || null,
+      team_size: teamSize,
+      team_members: teamMembers.length > 0 ? teamMembers : null,
       payment_status: "pending",
       receipt_number,
+      checked_in: false,
     })
     .select()
     .single();

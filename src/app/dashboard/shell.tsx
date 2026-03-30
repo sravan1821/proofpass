@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronLeft, Award, CalendarDays, Home, History } from "lucide-react";
+import { ChevronLeft, Award, CalendarDays, Home, History, Settings } from "lucide-react";
 import { signOutAction } from "../sign-in/actions";
 
 const NAV_ITEMS = [
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { label: "Events", href: "/dashboard/events", icon: CalendarDays },
   { label: "Certificates", href: "/dashboard/certificates", icon: Award },
   { label: "History", href: "/dashboard/history", icon: History },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export function DashboardShell({

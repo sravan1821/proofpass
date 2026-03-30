@@ -33,7 +33,11 @@ class MongoQuery<T extends StoredRecord = StoredRecord> implements PromiseLike<Q
   constructor(private readonly table: string) {}
 
   select(columns = "*", options: QueryOptions = {}) {
-    this.mode = "select";
+    // Only set mode to "select" if not already in insert/update/delete mode
+    // (chaining .select() after .insert() should keep insert mode)
+    if (this.mode !== "insert" && this.mode !== "update" && this.mode !== "delete") {
+      this.mode = "select";
+    }
     this.selectClause = columns;
     this.selectOptions = options;
     return this;
@@ -58,6 +62,47 @@ class MongoQuery<T extends StoredRecord = StoredRecord> implements PromiseLike<Q
 
   eq(field: string, value: unknown) {
     this.filters.push((record) => this.getFieldValue(record, field) === value);
+    return this;
+  }
+
+  neq(field: string, value: unknown) {
+    this.filters.push((record) => this.getFieldValue(record, field) !== value);
+    return this;
+  }
+
+  lt(field: string, value: unknown) {
+    this.filters.push((record) => {
+      const v = this.getFieldValue(record, field);
+      if (v == null || value == null) return false;
+      return String(v) < String(value);
+    });
+    return this;
+  }
+
+  lte(field: string, value: unknown) {
+    this.filters.push((record) => {
+      const v = this.getFieldValue(record, field);
+      if (v == null || value == null) return false;
+      return String(v) <= String(value);
+    });
+    return this;
+  }
+
+  gt(field: string, value: unknown) {
+    this.filters.push((record) => {
+      const v = this.getFieldValue(record, field);
+      if (v == null || value == null) return false;
+      return String(v) > String(value);
+    });
+    return this;
+  }
+
+  gte(field: string, value: unknown) {
+    this.filters.push((record) => {
+      const v = this.getFieldValue(record, field);
+      if (v == null || value == null) return false;
+      return String(v) >= String(value);
+    });
     return this;
   }
 

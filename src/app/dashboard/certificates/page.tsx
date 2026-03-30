@@ -18,7 +18,7 @@ export default async function CertificatesPage() {
 
   const { data: events } = (await supabase!
     .from("events")
-    .select("id, name, status, start_date, end_date, venue, event_code, org_name_display")
+    .select("id, name, status, start_date, end_date, venue, venue_details, event_code, org_name_display, category, registration_fee, description, event_time, advantages, slug")
     .eq("organizer_id", user.id)
     .order("created_at", { ascending: false })) as { data: any[] | null };
 
@@ -33,6 +33,12 @@ export default async function CertificatesPage() {
     .select("*")
     .eq("organizer_id", user.id)
     .order("created_at", { ascending: false })) as { data: any[] | null };
+
+  const { data: smtpProfile } = (await supabase!
+    .from("profiles")
+    .select("smtp_enabled, smtp_secure, smtp_host, smtp_port, smtp_username, smtp_password, smtp_from_name, smtp_from_email, smtp_reply_to, smtp_send_registration_emails, smtp_send_certificate_emails")
+    .eq("id", user.id)
+    .single()) as { data: any | null };
 
   const eventIds = (events || []).map((event: any) => event.id);
   let allRegistrations: any[] = [];
@@ -63,6 +69,23 @@ export default async function CertificatesPage() {
       templates={serialize(visibleTemplates)}
       registrations={serialize(allRegistrations)}
       organizationName={user.orgName || "ProofPass"}
+      smtpProfile={serialize(
+        smtpProfile
+          ? {
+              smtp_enabled: smtpProfile.smtp_enabled,
+              smtp_secure: smtpProfile.smtp_secure,
+              smtp_host: smtpProfile.smtp_host,
+              smtp_port: smtpProfile.smtp_port,
+              smtp_username: smtpProfile.smtp_username,
+              smtp_from_name: smtpProfile.smtp_from_name,
+              smtp_from_email: smtpProfile.smtp_from_email,
+              smtp_reply_to: smtpProfile.smtp_reply_to,
+              smtp_send_registration_emails: smtpProfile.smtp_send_registration_emails,
+              smtp_send_certificate_emails: smtpProfile.smtp_send_certificate_emails,
+              smtp_has_saved_password: Boolean(smtpProfile.smtp_password),
+            }
+          : null,
+      )}
     />
   );
 }
