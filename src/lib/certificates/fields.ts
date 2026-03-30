@@ -406,8 +406,7 @@ export function resolveCertificateFieldValue(sourceKey: CertificateFieldSourceKe
             ? "Winner"
             : participant?.category === "runner_up"
               ? "Runner-Up"
-              : "Participant") ??
-          "Participation Certificate",
+              : "Participant"),
       );
     case "certificate_statement":
       return buildCertificateStatement(context);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, Building2, CalendarDays, CheckCircle2, Clock3, FilePenLine, IndianRupee, MapPin } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Building2, CalendarDays, CheckCircle2, Clock3, FilePenLine, IndianRupee, MapPin, UserPlus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { registerForEventAction } from "../../actions";
 import Link from "next/link";
@@ -10,33 +10,78 @@ import Link from "next/link";
 interface RegisterFormProps {
   event: any;
   organizer: any;
+  isCompleted?: boolean;
 }
 
-export default function RegisterForm({ event, organizer }: RegisterFormProps) {
+interface TeamMember {
+  name: string;
+  email: string;
+}
+
+export default function RegisterForm({ event, organizer, isCompleted = false }: RegisterFormProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [teamSize, setTeamSize] = useState(1);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
+    { name: "", email: "" },
+    { name: "", email: "" },
+  ]);
   const router = useRouter();
 
   const advantages = (event.advantages as string[]) || [];
+
+  function updateTeamMember(index: number, field: keyof TeamMember, value: string) {
+    setTeamMembers((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
+    // Validate team members if team size > 1
+    if (teamSize > 1) {
+      for (let i = 0; i < teamSize - 1; i++) {
+        if (!teamMembers[i].name.trim() || !teamMembers[i].email.trim()) {
+          setError(`Please fill in name and email for Team Member ${i + 2}.`);
+          setLoading(false);
+          return;
+        }
+        // Basic email validation
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(teamMembers[i].email.trim())) {
+          setError(`Invalid email address for Team Member ${i + 2}.`);
+          setLoading(false);
+          return;
+        }
+      }
+    }
+
     const formData = new FormData(e.currentTarget);
     formData.set("eventId", event.id as string);
+    formData.set("teamSize", String(teamSize));
+
+    // Attach team member details as JSON
+    if (teamSize > 1) {
+      const members = teamMembers.slice(0, teamSize - 1).map((m) => ({
+        name: m.name.trim(),
+        email: m.email.trim(),
+      }));
+      formData.set("teamMembers", JSON.stringify(members));
+    }
+
     const result = await registerForEventAction(formData);
 
     if (result?.error) {
       setError(result.error);
       setLoading(false);
     } else if (result?.registrationId) {
-      // If event has a fee, redirect to payment page
       if (event.registration_fee && Number(event.registration_fee) > 0) {
         router.push(`/events/${event.slug}/payment?rid=${result.registrationId}`);
       } else {
-        // Free event — go straight to receipt
         router.push(`/events/${event.slug}/receipt/${result.registrationId}`);
       }
     }
@@ -102,14 +147,46 @@ export default function RegisterForm({ event, organizer }: RegisterFormProps) {
             <div className="glass-card" style={{ padding: "28px" }}>
               <h2 className="text-lg font-bold inline-flex items-center gap-2" style={{ marginBottom: "20px" }}>
                 <FilePenLine size={20} />
-                Register for this Event
+                {isCompleted ? "Event Completed" : "Register for this Event"}
               </h2>
 
+              {isCompleted ? (
+                <div style={{
+                  textAlign: "center", padding: "40px 20px",
+                }}>
+                  <div style={{
+                    width: "64px", height: "64px", borderRadius: "50%",
+                    background: "rgba(107,114,128,0.1)", border: "1px solid rgba(107,114,128,0.2)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    margin: "0 auto 16px", fontSize: "1.5rem",
+                  }}>✓</div>
+                  <h3 className="font-bold" style={{ fontSize: "1.1rem", marginBottom: "8px" }}>Registration Closed</h3>
+                  <p style={{ color: "var(--muted-foreground)", fontSize: "0.9rem", lineHeight: 1.6, marginBottom: "20px" }}>
+                    This event has already ended. Registrations are no longer accepted.
+                  </p>
+                  <Link href="/events" className="btn-secondary" style={{ padding: "10px 24px", fontSize: "0.9rem" }}>
+                    Browse Upcoming Events →
+                  </Link>
+                </div>
+              ) : (
+                <>
               {error && (
                 <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "20px", color: "var(--danger)", fontSize: "0.875rem" }}>{error}</div>
               )}
 
               <form onSubmit={handleSubmit}>
+                {/* Team Leader Section Header */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "8px",
+                  marginBottom: "14px", paddingBottom: "8px",
+                  borderBottom: "1px solid rgba(99,102,241,0.1)",
+                }}>
+                  <Users size={15} style={{ color: "var(--primary-soft)" }} />
+                  <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--primary-soft)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    {teamSize > 1 ? "Team Leader" : "Your Details"}
+                  </span>
+                </div>
+
                 <div style={{ marginBottom: "16px" }}>
                   <label style={{ display: "block", marginBottom: "6px", fontSize: "0.875rem", fontWeight: 500, color: "var(--muted-foreground)" }}>Full Name *</label>
                   <input type="text" name="fullName" required className="input-field" placeholder="Enter your full name" />
@@ -125,10 +202,113 @@ export default function RegisterForm({ event, organizer }: RegisterFormProps) {
                   <input type="tel" name="phone" className="input-field" placeholder="+91 XXXXX XXXXX" />
                 </div>
 
-                <div style={{ marginBottom: "24px" }}>
+                <div style={{ marginBottom: "16px" }}>
                   <label style={{ display: "block", marginBottom: "6px", fontSize: "0.875rem", fontWeight: 500, color: "var(--muted-foreground)" }}>College / Organization</label>
                   <input type="text" name="collegeName" className="input-field" placeholder="Your college or organization name" />
                 </div>
+
+                {/* Team Size Selector */}
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ display: "block", marginBottom: "8px", fontSize: "0.875rem", fontWeight: 500, color: "var(--muted-foreground)" }}>Team Size *</label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {[1, 2, 3].map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setTeamSize(size)}
+                        style={{
+                          flex: 1,
+                          padding: "12px 8px",
+                          borderRadius: "12px",
+                          border: teamSize === size
+                            ? "1.5px solid rgba(99,102,241,0.5)"
+                            : "1px solid rgba(255,255,255,0.08)",
+                          background: teamSize === size
+                            ? "rgba(99,102,241,0.12)"
+                            : "rgba(255,255,255,0.03)",
+                          color: teamSize === size ? "var(--foreground)" : "var(--muted-foreground)",
+                          cursor: "pointer",
+                          fontWeight: teamSize === size ? 700 : 500,
+                          fontSize: "0.9rem",
+                          transition: "all 0.2s ease",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <span style={{ fontSize: "1.1rem" }}>{size === 1 ? "👤" : size === 2 ? "👥" : "👥+"}</span>
+                        <span>{size} {size === 1 ? "Solo" : `Members`}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dynamic Team Member Fields */}
+                {teamSize > 1 && (
+                  <div style={{
+                    overflow: "hidden",
+                    animation: "slideDown 0.3s ease-out",
+                  }}>
+                    {Array.from({ length: teamSize - 1 }, (_, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          marginBottom: "16px",
+                          padding: "16px",
+                          borderRadius: "14px",
+                          border: "1px solid rgba(99,102,241,0.1)",
+                          background: "rgba(99,102,241,0.03)",
+                        }}
+                      >
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: "8px",
+                          marginBottom: "12px",
+                        }}>
+                          <UserPlus size={14} style={{ color: "var(--primary-soft)" }} />
+                          <span style={{
+                            fontSize: "0.78rem", fontWeight: 600,
+                            color: "var(--primary-soft)",
+                            textTransform: "uppercase", letterSpacing: "0.06em",
+                          }}>
+                            Team Member {i + 2}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                          <div>
+                            <label style={{ display: "block", marginBottom: "5px", fontSize: "0.82rem", fontWeight: 500, color: "var(--muted-foreground)" }}>
+                              Name *
+                            </label>
+                            <input
+                              type="text"
+                              className="input-field"
+                              placeholder={`Member ${i + 2} name`}
+                              value={teamMembers[i].name}
+                              onChange={(e) => updateTeamMember(i, "name", e.target.value)}
+                              required
+                              style={{ fontSize: "0.88rem" }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: "block", marginBottom: "5px", fontSize: "0.82rem", fontWeight: 500, color: "var(--muted-foreground)" }}>
+                              Email *
+                            </label>
+                            <input
+                              type="email"
+                              className="input-field"
+                              placeholder={`member${i + 2}@email.com`}
+                              value={teamMembers[i].email}
+                              onChange={(e) => updateTeamMember(i, "email", e.target.value)}
+                              required
+                              style={{ fontSize: "0.88rem" }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {event.registration_fee && Number(event.registration_fee) > 0 && (
                   <div style={{ padding: "14px", borderRadius: "10px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -147,10 +327,28 @@ export default function RegisterForm({ event, organizer }: RegisterFormProps) {
                   </span>
                 </button>
               </form>
+              </>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Animation keyframe */}
+      <style>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            max-height: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            max-height: 500px;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }

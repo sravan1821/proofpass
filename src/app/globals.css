@@ -614,6 +614,28 @@ li {
   border-bottom: none;
 }
 
+/* ── Share Button ── */
+@keyframes sharePopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.share-trigger-btn:hover {
+  border-color: rgba(143, 220, 255, 0.28) !important;
+  color: var(--foreground) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.share-option-btn:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;

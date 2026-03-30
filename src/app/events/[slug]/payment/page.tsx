@@ -33,5 +33,6 @@ export default async function PaymentPage({
 
   if (!registration) notFound();
 
-  return <PaymentPageClient event={event} registration={registration} />;
+  const serialize = <T,>(data: T): T => JSON.parse(JSON.stringify(data));
+  return <PaymentPageClient event={serialize(event)} registration={serialize(registration)} />;
 }

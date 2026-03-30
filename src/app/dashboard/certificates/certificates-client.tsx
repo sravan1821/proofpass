@@ -4,12 +4,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import {
+  Award,
   CalendarDays,
+  Check,
   CheckCircle2,
+  Clock,
   Eye,
   LayoutTemplate,
+  Mail,
+  MapPin,
+  Medal,
+  Pencil,
   Plus,
   Save,
+  Send,
+  Tag,
   Trophy,
   Upload,
   Users,
@@ -25,7 +34,14 @@ import {
   type CertificateTemplateLayout,
 } from "@/lib/certificates/fields";
 import { hasAssetBackedTemplateSurface, type CertificateTemplate } from "@/lib/certificates/templates";
-import { issueCertificatesAction, upsertCustomCertificateTemplateAction } from "./actions";
+import {
+  issueCertificatesAction,
+  issueCertificatesByCategoryAction,
+  sendIssuedCertificatesAction,
+  upsertCustomCertificateTemplateAction,
+} from "./actions";
+import { checkInParticipantAction, checkOutParticipantAction, bulkCheckInAction, updateRegistrationDetailsAction } from "@/app/dashboard/events/actions";
+import { saveOrganizerSmtpSettingsAction, testOrganizerSmtpSettingsAction } from "@/app/dashboard/settings/actions";
 import { TemplateDesigner } from "./template-designer";
 
 interface CertificatesClientProps {
@@ -34,6 +50,7 @@ interface CertificatesClientProps {
   templates: CertificateTemplate[];
   registrations: Array<Record<string, unknown>>;
   organizationName: string;
+  smtpProfile: Record<string, unknown> | null;
 }
 
 type EditorState = {
@@ -53,28 +70,50 @@ type EditorState = {
 
 type CertTab = "events" | "templates";
 
-const DEMO_EVENTS: Array<Record<string, unknown>> = [
-  { id: "demo-evt-1", name: "TechFest 2026", status: "active", start_date: "2026-03-25", end_date: "2026-03-25" },
-  { id: "demo-evt-2", name: "Code Sprint Championship", status: "completed", start_date: "2026-03-18", end_date: "2026-03-18" },
-  { id: "demo-evt-3", name: "AI/ML Workshop", status: "published", start_date: "2026-03-29", end_date: "2026-03-29" },
-];
+type PendingMailIntent =
+  | { kind: "bulk-generate" }
+  | { kind: "role-based-generate" }
+  | { kind: "send-certificates"; certificateIds: string[] };
 
-const DEMO_REGISTRATIONS: Array<Record<string, unknown>> = [
-  { id: "demo-r1", event_id: "demo-evt-1", full_name: "Aarav Sharma", email: "aarav.sharma@email.com", phone: "+91 98765 43210", college_name: "JNTU Hyderabad", payment_status: "paid", receipt_number: "PP-RX1A2B", created_at: "2026-03-20T10:00:00Z" },
-  { id: "demo-r2", event_id: "demo-evt-1", full_name: "Priya Patel", email: "priya.patel@email.com", phone: "+91 87654 32109", college_name: "IIT Bombay", payment_status: "paid", receipt_number: "PP-RX3C4D", created_at: "2026-03-21T14:30:00Z" },
-  { id: "demo-r3", event_id: "demo-evt-1", full_name: "Rohit Verma", email: "rohit.v@email.com", phone: "+91 76543 21098", college_name: "NIT Warangal", payment_status: "pending", receipt_number: "PP-RX5E6F", created_at: "2026-03-22T09:15:00Z" },
-  { id: "demo-r4", event_id: "demo-evt-1", full_name: "Sneha Reddy", email: "sneha.r@email.com", phone: "+91 65432 10987", college_name: "BITS Pilani", payment_status: "paid", receipt_number: "PP-RX7G8H", created_at: "2026-03-23T16:45:00Z" },
-  { id: "demo-r5", event_id: "demo-evt-1", full_name: "Karthik Nair", email: "karthik.n@email.com", phone: "+91 54321 09876", college_name: "VIT Vellore", payment_status: "paid", receipt_number: "PP-RX9I0J", created_at: "2026-03-24T11:20:00Z" },
-  { id: "demo-r6", event_id: "demo-evt-2", full_name: "Ananya Gupta", email: "ananya.g@email.com", phone: "+91 43210 98765", college_name: "IIIT Hyderabad", payment_status: "paid", receipt_number: "PP-RY1K2L", created_at: "2026-03-18T08:00:00Z" },
-  { id: "demo-r7", event_id: "demo-evt-2", full_name: "Vikram Singh", email: "vikram.s@email.com", phone: "+91 32109 87654", college_name: "DTU Delhi", payment_status: "paid", receipt_number: "PP-RY3M4N", created_at: "2026-03-19T13:10:00Z" },
-  { id: "demo-r8", event_id: "demo-evt-3", full_name: "Meera Joshi", email: "meera.j@email.com", phone: "+91 21098 76543", college_name: "CBIT Hyderabad", payment_status: "pending", receipt_number: "PP-RZ5O6P", created_at: "2026-03-25T15:30:00Z" },
-];
+type SmtpFormState = {
+  enabled: boolean;
+  secure: boolean;
+  host: string;
+  port: string;
+  username: string;
+  password: string;
+  fromName: string;
+  fromEmail: string;
+  replyTo: string;
+  sendRegistrationEmails: boolean;
+  sendCertificateEmails: boolean;
+};
 
-const DEMO_CERTIFICATES: Array<Record<string, unknown>> = [
-  { id: "demo-c1", certificate_id_display: "PP-2026-TF-00001", recipient_name: "Aarav Sharma", category: "winner", template_name: "Participation Blue & Gold", event_name: "TechFest 2026", status: "active", issued_at: "2026-03-25T12:00:00Z" },
-  { id: "demo-c2", certificate_id_display: "PP-2026-TF-00002", recipient_name: "Priya Patel", category: "runner_up", template_name: "Participation Blue & Gold", event_name: "TechFest 2026", status: "active", issued_at: "2026-03-25T12:00:00Z" },
-  { id: "demo-c3", certificate_id_display: "PP-2026-TF-00003", recipient_name: "Sneha Reddy", category: "participant", template_name: "Participation Blue & Gold", event_name: "TechFest 2026", status: "active", issued_at: "2026-03-25T12:00:00Z" },
-];
+function createSmtpFormState(profile: Record<string, unknown> | null): SmtpFormState {
+  return {
+    enabled: Boolean(profile?.smtp_enabled),
+    secure: Boolean(profile?.smtp_secure),
+    host: String(profile?.smtp_host || ""),
+    port: String(profile?.smtp_port || 587),
+    username: String(profile?.smtp_username || ""),
+    password: "",
+    fromName: String(profile?.smtp_from_name || ""),
+    fromEmail: String(profile?.smtp_from_email || ""),
+    replyTo: String(profile?.smtp_reply_to || ""),
+    sendRegistrationEmails: Boolean(profile?.smtp_send_registration_emails),
+    sendCertificateEmails: Boolean(profile?.smtp_send_certificate_emails),
+  };
+}
+
+function hasSmtpConfigured(profile: Record<string, unknown> | null) {
+  return Boolean(
+    profile?.smtp_enabled &&
+      profile?.smtp_host &&
+      profile?.smtp_username &&
+      (profile?.smtp_password || profile?.smtp_has_saved_password) &&
+      profile?.smtp_from_email,
+  );
+}
 
 function cloneLayout(layout?: CertificateTemplateLayout | null): CertificateTemplateLayout {
   return JSON.parse(JSON.stringify(layout || EMPTY_TEMPLATE_LAYOUT));
@@ -190,12 +229,12 @@ export function CertificatesClient({
   templates,
   registrations: realRegistrations,
   organizationName,
+  smtpProfile,
 }: CertificatesClientProps) {
   const router = useRouter();
-  const events = realEvents.length > 0 ? realEvents : DEMO_EVENTS;
-  const certificates = realCertificates.length > 0 ? realCertificates : DEMO_CERTIFICATES;
-  const registrations = realRegistrations.length > 0 ? realRegistrations : DEMO_REGISTRATIONS;
-  const isDemo = realEvents.length === 0;
+  const events = realEvents;
+  const certificates = realCertificates;
+  const registrations = realRegistrations;
 
   const [certTab, setCertTab] = useState<CertTab>("events");
   const [selectedEventId, setSelectedEventId] = useState(String(events[0]?.id ?? ""));
@@ -208,6 +247,32 @@ export function CertificatesClient({
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [msg, setMsg] = useState("");
   const [eventsTabEventId, setEventsTabEventId] = useState(String(events[0]?.id ?? ""));
+  const [overviewEventId, setOverviewEventId] = useState<string | null>(null);
+
+  // Events tab: role assignment & per-category template selection
+  const [winnerId, setWinnerId] = useState<string | null>(null);
+  const [runnerId, setRunnerId] = useState<string | null>(null);
+  const [winnerTemplateId, setWinnerTemplateId] = useState(templates[0]?.id ?? "");
+  const [runnerTemplateId, setRunnerTemplateId] = useState(templates[0]?.id ?? "");
+  const [participantTemplateId, setParticipantTemplateId] = useState(templates[0]?.id ?? "");
+  const [sendEmailEvents, setSendEmailEvents] = useState(true);
+  const [issuingCerts, setIssuingCerts] = useState(false);
+  const [showTemplatePanel, setShowTemplatePanel] = useState(false);
+  const [checkingIn, setCheckingIn] = useState<string | null>(null);
+  const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
+  const [editingRegId, setEditingRegId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [selectedCertificateIds, setSelectedCertificateIds] = useState<string[]>([]);
+  const [sendingCertificates, setSendingCertificates] = useState(false);
+  const [smtpModalOpen, setSmtpModalOpen] = useState(false);
+  const [smtpForm, setSmtpForm] = useState<SmtpFormState>(() => createSmtpFormState(smtpProfile));
+  const [smtpConfig, setSmtpConfig] = useState<Record<string, unknown> | null>(smtpProfile);
+  const [smtpMessage, setSmtpMessage] = useState("");
+  const [savingSmtp, setSavingSmtp] = useState(false);
+  const [testingSmtp, setTestingSmtp] = useState(false);
+  const [pendingMailIntent, setPendingMailIntent] = useState<PendingMailIntent | null>(null);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) ?? templates[0],
@@ -222,6 +287,16 @@ export function CertificatesClient({
   const filteredRegistrations = useMemo(
     () => registrations.filter((registration) => String(registration.event_id) === eventsTabEventId),
     [eventsTabEventId, registrations],
+  );
+
+  const overviewRegistrations = useMemo(
+    () => (overviewEventId ? registrations.filter((r) => String(r.event_id) === overviewEventId) : []),
+    [overviewEventId, registrations],
+  );
+
+  const overviewEvent = useMemo(
+    () => (overviewEventId ? events.find((e) => String(e.id) === overviewEventId) ?? null : null),
+    [overviewEventId, events],
   );
 
   const selectedEvent = useMemo(
@@ -267,6 +342,27 @@ export function CertificatesClient({
       certificateId: "PP-2026-PREVIEW-00001",
     });
   }, [events, organizationName, previewTemplate, registrations, selectedEvent]);
+
+  const groupedCertificates = useMemo(() => {
+    const groupedByEvent = new Map<string, { eventName: string; certs: Array<Record<string, unknown>> }>();
+
+    for (const cert of certificates) {
+      const eventId = String(cert.event_id || "unknown");
+      if (!groupedByEvent.has(eventId)) {
+        const matchedEvent = events.find((event) => String(event.id) === eventId);
+        groupedByEvent.set(eventId, {
+          eventName: String(matchedEvent?.name || cert.event_name || "Unknown Event"),
+          certs: [],
+        });
+      }
+
+      groupedByEvent.get(eventId)?.certs.push(cert);
+    }
+
+    return Array.from(groupedByEvent.entries());
+  }, [certificates, events]);
+
+  const smtpReady = hasSmtpConfigured(smtpConfig);
 
   const categoryColors: Record<string, string> = {
     winner: "badge-gold",
@@ -374,6 +470,147 @@ export function CertificatesClient({
     setLoading(false);
   }
 
+  async function executePendingMailIntent(intent: PendingMailIntent) {
+    if (intent.kind === "bulk-generate") {
+      await handleIssue();
+      return;
+    }
+
+    if (intent.kind === "role-based-generate") {
+      if (!overviewEventId) return;
+
+      setIssuingCerts(true);
+      setMsg("");
+      const result = await issueCertificatesByCategoryAction(
+        overviewEventId,
+        {
+          winner: winnerTemplateId,
+          runner_up: runnerTemplateId,
+          participant: participantTemplateId,
+        },
+        winnerId,
+        runnerId,
+        sendEmailEvents,
+      );
+
+      if (result?.error) {
+        setMsg(result.error);
+      } else {
+        setMsg(`Successfully issued ${result.count} certificate(s) with role-based templates!`);
+        setOverviewEventId(null);
+        setShowTemplatePanel(false);
+        router.refresh();
+      }
+
+      setIssuingCerts(false);
+      return;
+    }
+
+    setSendingCertificates(true);
+    setMsg("");
+    const result = await sendIssuedCertificatesAction(intent.certificateIds);
+    if (result?.error) {
+      setMsg(result.error);
+    } else {
+      const skippedSuffix = result.skippedCount ? `, ${result.skippedCount} skipped` : "";
+      setMsg(`Sent ${result.sentCount} certificate email(s)${skippedSuffix}.`);
+      setSelectedCertificateIds((current) => current.filter((id) => !intent.certificateIds.includes(id)));
+    }
+    setSendingCertificates(false);
+  }
+
+  async function requestMailIntent(intent: PendingMailIntent) {
+    if (!smtpReady) {
+      setPendingMailIntent(intent);
+      setSmtpModalOpen(true);
+      setSmtpMessage("Configure SMTP to send certificate emails.");
+      return;
+    }
+
+    await executePendingMailIntent(intent);
+  }
+
+  function toggleCertificateSelection(certificateId: string) {
+    setSelectedCertificateIds((current) =>
+      current.includes(certificateId) ? current.filter((id) => id !== certificateId) : [...current, certificateId],
+    );
+  }
+
+  function toggleEventCertificateSelection(eventCertificateIds: string[]) {
+    setSelectedCertificateIds((current) => {
+      const allSelected = eventCertificateIds.every((id) => current.includes(id));
+      if (allSelected) {
+        return current.filter((id) => !eventCertificateIds.includes(id));
+      }
+
+      return Array.from(new Set([...current, ...eventCertificateIds]));
+    });
+  }
+
+  async function handleSaveSmtp() {
+    setSavingSmtp(true);
+    setSmtpMessage("");
+
+    const formData = new FormData();
+    if (smtpForm.enabled) formData.set("smtpEnabled", "on");
+    if (smtpForm.secure) formData.set("smtpSecure", "on");
+    formData.set("smtpHost", smtpForm.host);
+    formData.set("smtpPort", smtpForm.port || "587");
+    formData.set("smtpUsername", smtpForm.username);
+    formData.set("smtpPassword", smtpForm.password);
+    formData.set("smtpFromName", smtpForm.fromName);
+    formData.set("smtpFromEmail", smtpForm.fromEmail);
+    formData.set("smtpReplyTo", smtpForm.replyTo);
+    if (smtpForm.sendRegistrationEmails) formData.set("smtpSendRegistrationEmails", "on");
+    if (smtpForm.sendCertificateEmails) formData.set("smtpSendCertificateEmails", "on");
+
+    const result = await saveOrganizerSmtpSettingsAction(formData);
+    setSavingSmtp(false);
+
+    if (result?.error) {
+      setSmtpMessage(result.error);
+      return;
+    }
+
+    const nextConfig: Record<string, unknown> = {
+      smtp_enabled: smtpForm.enabled,
+      smtp_secure: smtpForm.secure,
+      smtp_host: smtpForm.host,
+      smtp_port: Number(smtpForm.port || 587),
+      smtp_username: smtpForm.username,
+      smtp_has_saved_password: Boolean(smtpForm.password || smtpConfig?.smtp_has_saved_password),
+      smtp_from_name: smtpForm.fromName,
+      smtp_from_email: smtpForm.fromEmail,
+      smtp_reply_to: smtpForm.replyTo,
+      smtp_send_registration_emails: smtpForm.sendRegistrationEmails,
+      smtp_send_certificate_emails: smtpForm.sendCertificateEmails,
+    };
+
+    setSmtpConfig(nextConfig);
+    setSmtpForm((current) => ({ ...current, password: "" }));
+    setSmtpMessage("SMTP settings saved.");
+
+    if (!hasSmtpConfigured(nextConfig)) {
+      setSmtpMessage("SMTP settings saved, but required fields are still incomplete.");
+      return;
+    }
+
+    if (pendingMailIntent) {
+      const intent = pendingMailIntent;
+      setPendingMailIntent(null);
+      setSmtpModalOpen(false);
+      await executePendingMailIntent(intent);
+    }
+  }
+
+  async function handleTestSmtp() {
+    setTestingSmtp(true);
+    setSmtpMessage("");
+    const result = await testOrganizerSmtpSettingsAction();
+    setTestingSmtp(false);
+    setSmtpMessage(result?.error || "SMTP connection verified.");
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       <div>
@@ -383,11 +620,11 @@ export function CertificatesClient({
         </p>
       </div>
 
-      {isDemo ? (
+      {events.length === 0 ? (
         <div style={{ padding: "12px 18px", borderRadius: "12px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", display: "flex", alignItems: "center", gap: "10px" }}>
           <span style={{ fontSize: "1.1rem" }}>📋</span>
           <span style={{ fontSize: "0.875rem", color: "#f59e0b" }}>
-            <strong>Demo data</strong> — These are sample entries. Create events and collect registrations to see your real data here.
+            No events yet. Create events from the Events section and collect registrations to see your data here.
           </span>
         </div>
       ) : null}
@@ -438,83 +675,795 @@ export function CertificatesClient({
       ) : null}
 
       {certTab === "events" ? (
-        <div className="glass-card" style={{ padding: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <div className="inline-flex items-center gap-2" style={{ color: "var(--primary-soft)" }}>
-              <CalendarDays size={18} />
-              <span className="font-semibold">Registered Users by Event</span>
-            </div>
-            <div>
-              <select value={eventsTabEventId} onChange={(event) => setEventsTabEventId(event.target.value)} className="input-field" style={{ minWidth: "240px" }}>
-                <option value="">Select an event...</option>
-                {events.map((event) => (
-                  <option key={String(event.id)} value={String(event.id)}>
-                    {String(event.name)} ({String(event.status)})
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          {/* Section Header */}
+          <div className="inline-flex items-center gap-2" style={{ color: "var(--primary-soft)" }}>
+            <CalendarDays size={18} />
+            <span className="font-semibold">Your Events</span>
+            <span style={{ fontSize: "0.78rem", color: "var(--muted-foreground)", marginLeft: "8px" }}>
+              Click &ldquo;Overview&rdquo; to manage participants and issue certificates
+            </span>
           </div>
 
-          {eventsTabEventId ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px", marginBottom: "20px" }}>
-              <div style={{ padding: "16px", borderRadius: "14px", background: "rgba(88,115,255,0.06)", border: "1px solid rgba(88,115,255,0.12)", textAlign: "center" }}>
-                <p style={{ fontSize: "1.6rem", fontWeight: 800, color: "#5873ff" }}>{filteredRegistrations.length}</p>
-                <p style={{ fontSize: "0.72rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, marginTop: "4px" }}>Total Registered</p>
-              </div>
-              <div style={{ padding: "16px", borderRadius: "14px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.12)", textAlign: "center" }}>
-                <p style={{ fontSize: "1.6rem", fontWeight: 800, color: "#10b981" }}>{filteredRegistrations.filter((registration) => registration.payment_status === "paid").length}</p>
-                <p style={{ fontSize: "0.72rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, marginTop: "4px" }}>Paid</p>
-              </div>
-              <div style={{ padding: "16px", borderRadius: "14px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", textAlign: "center" }}>
-                <p style={{ fontSize: "1.6rem", fontWeight: 800, color: "#f59e0b" }}>{filteredRegistrations.filter((registration) => registration.payment_status !== "paid").length}</p>
-                <p style={{ fontSize: "0.72rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, marginTop: "4px" }}>Pending</p>
+          {/* Event Card Grid */}
+          {events.length === 0 ? (
+            <div className="glass-card" style={{ padding: "48px", textAlign: "center" }}>
+              <CalendarDays size={40} style={{ margin: "0 auto 12px", color: "var(--primary-soft)", opacity: 0.5 }} />
+              <p style={{ color: "var(--muted-foreground)" }}>No events found. Create your first event from the Events section.</p>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "20px" }}>
+              {events.map((evt) => {
+                const evtId = String(evt.id);
+                const category = String(evt.category || "event").toLowerCase();
+                const fee = Number(evt.registration_fee || 0);
+                const advantages = (evt.advantages as string[]) || [];
+                const catColorMap: Record<string, string> = {
+                  hackathon: "#818cf8", workshop: "#10b981", seminar: "#f59e0b",
+                  conference: "#3b82f6", competition: "#ef4444", webinar: "#8b5cf6", other: "#6b7280",
+                };
+                const catColor = catColorMap[category] || catColorMap.other;
+                const gradientMap: Record<string, string> = {
+                  hackathon: "linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)",
+                  workshop: "linear-gradient(135deg, #10b981 0%, #047857 100%)",
+                  seminar: "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
+                  conference: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  competition: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
+                  webinar: "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+                  other: "linear-gradient(135deg, #6b7280 0%, #374151 100%)",
+                };
+                const gradient = gradientMap[category] || gradientMap.other;
+                const eventRegs = registrations.filter((r) => String(r.event_id) === evtId);
+                const startDate = evt.start_date ? new Date(String(evt.start_date)).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "TBA";
+                const endDate = evt.end_date && evt.end_date !== evt.start_date ? new Date(String(evt.end_date)).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : null;
+
+                return (
+                  <div
+                    key={evtId}
+                    style={{
+                      borderRadius: "20px",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      background: "linear-gradient(180deg, rgba(14,16,32,0.95), rgba(8,10,22,0.98))",
+                      overflow: "hidden",
+                      transition: "border-color 0.25s ease, box-shadow 0.25s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = `${catColor}40`;
+                      e.currentTarget.style.boxShadow = `0 8px 32px ${catColor}12`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    {/* Gradient top bar */}
+                    <div style={{ height: "5px", background: gradient }} />
+                    <div style={{ padding: "22px 24px" }}>
+                      {/* Category + Price */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+                        <span style={{
+                          padding: "4px 14px", borderRadius: "20px",
+                          background: `${catColor}18`, border: `1px solid ${catColor}35`,
+                          fontSize: "0.72rem", fontWeight: 600, color: catColor, textTransform: "capitalize",
+                        }}>
+                          {category}
+                        </span>
+                        <span style={{ fontSize: "0.92rem", color: fee > 0 ? "var(--foreground)" : "#10b981", fontWeight: 700 }}>
+                          {fee > 0 ? `₹${fee}` : "FREE"}
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <h3 style={{ fontSize: "1.12rem", fontWeight: 700, marginBottom: "8px", color: "white" }}>
+                        {String(evt.name)}
+                      </h3>
+
+                      {/* Description */}
+                      {evt.description ? (
+                        <p style={{
+                          fontSize: "0.82rem", color: "var(--muted-foreground)", marginBottom: "14px",
+                          lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical" as const, overflow: "hidden",
+                        }}>
+                          {String(evt.description)}
+                        </p>
+                      ) : null}
+
+                      {/* Event details */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "7px", marginBottom: "14px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
+                          <CalendarDays size={13} style={{ color: catColor, flexShrink: 0 }} />
+                          <span>{startDate}{endDate ? ` – ${endDate}` : ""}</span>
+                        </div>
+                        {evt.event_time ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
+                            <Clock size={13} style={{ color: catColor, flexShrink: 0 }} />
+                            <span>{String(evt.event_time)}</span>
+                          </div>
+                        ) : null}
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
+                          <MapPin size={13} style={{ color: catColor, flexShrink: 0 }} />
+                          <span>{String(evt.venue_details || evt.venue || "Online")}</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
+                          <Users size={13} style={{ color: catColor, flexShrink: 0 }} />
+                          <span>{String(evt.org_name_display || "Organizer")}</span>
+                        </div>
+                      </div>
+
+                      {/* Advantages */}
+                      {advantages.length > 0 ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "16px" }}>
+                          {advantages.slice(0, 3).map((adv) => (
+                            <span key={adv} style={{
+                              padding: "3px 10px", borderRadius: "16px",
+                              background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)",
+                              fontSize: "0.7rem", color: "#10b981",
+                            }}>
+                              ✓ {adv}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {/* Footer */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <span style={{ fontSize: "0.76rem", color: "var(--muted-foreground)" }}>
+                            {eventRegs.length} registered
+                          </span>
+                          <span className={`badge ${String(evt.status) === "completed" ? "badge-success" : String(evt.status) === "draft" ? "badge-neutral" : "badge-info"}`} style={{ fontSize: "0.68rem" }}>
+                            {String(evt.status || "published")}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setOverviewEventId(evtId);
+                            setEventsTabEventId(evtId);
+                            setWinnerId(null);
+                            setRunnerId(null);
+                            setShowTemplatePanel(false);
+                            setMsg("");
+                            // Auto check-in all participants by default
+                            const unchecked = eventRegs.filter(r => !r.checked_in).map(r => String(r.id));
+                            if (unchecked.length > 0) {
+                              await bulkCheckInAction(evtId, unchecked);
+                              router.refresh();
+                            }
+                          }}
+                          className="btn-primary"
+                          style={{ padding: "8px 18px", fontSize: "0.82rem", borderRadius: "10px", border: "none", cursor: "pointer" }}
+                        >
+                          Overview →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── OVERVIEW MODAL ── */}
+          {overviewEventId && overviewEvent ? (
+            <div
+              style={{
+                position: "fixed", inset: 0,
+                background: "rgba(3, 8, 20, 0.78)",
+                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                zIndex: 85, padding: "24px",
+              }}
+              onClick={() => setOverviewEventId(null)}
+            >
+              <div
+                className="glass-card"
+                style={{ width: "min(1100px, 100%)", maxHeight: "92vh", overflow: "auto", padding: "28px", position: "relative" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Close button */}
+                <button
+                  type="button"
+                  onClick={() => setOverviewEventId(null)}
+                  style={{
+                    position: "absolute", top: "18px", right: "18px",
+                    width: "36px", height: "36px", borderRadius: "12px",
+                    border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)",
+                    color: "var(--foreground)", display: "inline-flex", alignItems: "center",
+                    justifyContent: "center", cursor: "pointer",
+                  }}
+                >
+                  <X size={18} />
+                </button>
+
+                {/* Event header info */}
+                <div style={{ marginBottom: "24px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                    <Tag size={16} style={{ color: "var(--primary-soft)" }} />
+                    <span style={{
+                      padding: "3px 12px", borderRadius: "16px",
+                      background: "rgba(88,115,255,0.1)", border: "1px solid rgba(88,115,255,0.2)",
+                      fontSize: "0.72rem", fontWeight: 600, color: "var(--primary-soft)", textTransform: "capitalize",
+                    }}>
+                      {String(overviewEvent.category || "event")}
+                    </span>
+                  </div>
+                  <h2 className="text-xl font-bold" style={{ marginBottom: "4px" }}>
+                    {String(overviewEvent.name)} — Participant Overview
+                  </h2>
+                  <p style={{ color: "var(--muted-foreground)", margin: 0, fontSize: "0.85rem" }}>
+                    Assign roles and then select templates to issue certificates
+                  </p>
+                </div>
+
+                {/* Check-in Stats Bar */}
+                {overviewRegistrations.length > 0 && (
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap",
+                    padding: "12px 18px", borderRadius: "12px",
+                    background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.1)",
+                    marginBottom: "16px",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <CheckCircle2 size={16} style={{ color: "#10b981" }} />
+                      <span style={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
+                        Checked in: <strong style={{ color: "#10b981" }}>
+                          {overviewRegistrations.filter(r => r.checked_in).length}
+                        </strong> / {overviewRegistrations.length}
+                      </span>
+                    </div>
+                    {overviewRegistrations.some(r => !r.checked_in) && (
+                      <button
+                        type="button"
+                        disabled={checkingIn === "bulk"}
+                        onClick={async () => {
+                          setCheckingIn("bulk");
+                          const unchecked = overviewRegistrations.filter(r => !r.checked_in).map(r => String(r.id));
+                          await bulkCheckInAction(overviewEventId, unchecked);
+                          router.refresh();
+                          setCheckingIn(null);
+                        }}
+                        style={{
+                          padding: "6px 14px", borderRadius: "8px", border: "none",
+                          background: "rgba(16,185,129,0.12)", color: "#10b981",
+                          fontSize: "0.78rem", fontWeight: 600, cursor: "pointer",
+                        }}
+                      >
+                        {checkingIn === "bulk" ? "Checking in..." : "✓ Check-In All"}
+                      </button>
+                    )}
+                    <span style={{ fontSize: "0.72rem", color: "var(--muted-foreground)", marginLeft: "auto" }}>
+                      ⚠️ Only checked-in participants will receive certificates
+                    </span>
+                  </div>
+                )}
+
+                {/* Participant Table - always show */}
+                <div style={{ borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden", marginBottom: "24px" }}>
+                  <table className="schedule-table" style={{ width: "100%" }}>
+                    <thead>
+                      <tr style={{ background: "rgba(255,255,255,0.02)" }}>
+                        {["NAME", "EMAIL", "TEAM", "CHECK-IN", "WINNER", "RUNNER", "PARTICIPANT", ""].map((heading) => (
+                          <th key={heading} style={{
+                            padding: "14px 14px", textAlign: "left",
+                            fontSize: "0.72rem", color: "var(--muted-foreground)",
+                            textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 700,
+                            borderBottom: "1px solid rgba(255,255,255,0.08)",
+                            whiteSpace: "nowrap",
+                          }}>
+                            {heading}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overviewRegistrations.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ padding: "40px", textAlign: "center", color: "var(--muted-foreground)" }}>
+                            No registrations for this event yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        overviewRegistrations.map((registration) => {
+                          const regId = String(registration.id);
+                          const currentRole = regId === winnerId ? "winner" : regId === runnerId ? "runner_up" : "participant";
+                          const isCheckedIn = Boolean(registration.checked_in);
+                          const teamSize = Number(registration.team_size || 1);
+                          const teamMembers = (registration.team_members as Array<{ name: string; email: string }>) || [];
+                          const isExpanded = expandedTeam === regId;
+
+                          return (
+                            <>
+                              <tr key={regId} style={{
+                                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                                background: !isCheckedIn
+                                  ? "rgba(239,68,68,0.02)"
+                                  : currentRole === "winner"
+                                    ? "rgba(245,158,11,0.04)"
+                                    : currentRole === "runner_up"
+                                      ? "rgba(156,163,175,0.04)"
+                                      : "transparent",
+                              }}>
+                                <td style={{ padding: "12px 14px", fontWeight: 600, fontSize: "0.88rem" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    {currentRole === "winner" && <Trophy size={15} color="#fbbf24" />}
+                                    {currentRole === "runner_up" && <Medal size={15} color="#d1d5db" />}
+                                    {String(registration.full_name || "—")}
+                                  </div>
+                                </td>
+                                <td style={{ padding: "12px 14px", color: "var(--muted-foreground)", fontSize: "0.84rem" }}>
+                                  {String(registration.email || "—")}
+                                </td>
+                                {/* Team column */}
+                                <td style={{ padding: "12px 14px" }}>
+                                  {teamSize > 1 ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedTeam(isExpanded ? null : regId)}
+                                      style={{
+                                        padding: "3px 10px", borderRadius: "12px", border: "none",
+                                        background: "rgba(99,102,241,0.1)", color: "var(--primary-soft)",
+                                        fontSize: "0.72rem", fontWeight: 600, cursor: "pointer",
+                                        display: "inline-flex", alignItems: "center", gap: "4px",
+                                      }}
+                                    >
+                                      <Users size={12} /> {teamSize} {isExpanded ? "▲" : "▼"}
+                                    </button>
+                                  ) : (
+                                    <span style={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>Solo</span>
+                                  )}
+                                </td>
+                                {/* Check-in toggle */}
+                                <td style={{ padding: "12px 14px" }}>
+                                  <button
+                                    type="button"
+                                    disabled={checkingIn === regId}
+                                    onClick={async () => {
+                                      setCheckingIn(regId);
+                                      if (isCheckedIn) {
+                                        await checkOutParticipantAction(regId, overviewEventId);
+                                        // When check-in is turned OFF, also clear any role assignment
+                                        if (winnerId === regId) setWinnerId(null);
+                                        if (runnerId === regId) setRunnerId(null);
+                                      } else {
+                                        await checkInParticipantAction(regId, overviewEventId);
+                                      }
+                                      router.refresh();
+                                      setCheckingIn(null);
+                                    }}
+                                    style={{
+                                      width: "44px", height: "24px", borderRadius: "12px", border: "none",
+                                      background: isCheckedIn ? "#10b981" : "rgba(239,68,68,0.2)",
+                                      position: "relative", cursor: "pointer", transition: "background 0.2s ease",
+                                      opacity: checkingIn === regId ? 0.5 : 1,
+                                    }}
+                                  >
+                                    <span style={{
+                                      position: "absolute", top: "3px",
+                                      left: isCheckedIn ? "22px" : "3px",
+                                      width: "18px", height: "18px", borderRadius: "50%",
+                                      background: "white", transition: "left 0.2s ease",
+                                      boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                                    }} />
+                                  </button>
+                                </td>
+                                {/* Winner toggle */}
+                                <td style={{ padding: "12px 14px" }}>
+                                  <button
+                                    type="button"
+                                    disabled={!isCheckedIn}
+                                    onClick={() => {
+                                      if (!isCheckedIn) return;
+                                      if (currentRole === "winner") {
+                                        setWinnerId(null);
+                                      } else {
+                                        setWinnerId(regId);
+                                        if (runnerId === regId) setRunnerId(null);
+                                      }
+                                    }}
+                                    style={{
+                                      width: "44px", height: "24px", borderRadius: "12px", border: "none",
+                                      background: !isCheckedIn ? "rgba(255,255,255,0.04)" : currentRole === "winner" ? "#fbbf24" : "rgba(255,255,255,0.1)",
+                                      position: "relative", cursor: isCheckedIn ? "pointer" : "not-allowed", transition: "background 0.2s ease",
+                                      opacity: isCheckedIn ? 1 : 0.35,
+                                    }}
+                                  >
+                                    <span style={{
+                                      position: "absolute", top: "3px",
+                                      left: currentRole === "winner" ? "22px" : "3px",
+                                      width: "18px", height: "18px", borderRadius: "50%",
+                                      background: "white", transition: "left 0.2s ease",
+                                      boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                                    }} />
+                                  </button>
+                                </td>
+                                {/* Runner toggle */}
+                                <td style={{ padding: "12px 14px" }}>
+                                  <button
+                                    type="button"
+                                    disabled={!isCheckedIn}
+                                    onClick={() => {
+                                      if (!isCheckedIn) return;
+                                      if (currentRole === "runner_up") {
+                                        setRunnerId(null);
+                                      } else {
+                                        setRunnerId(regId);
+                                        if (winnerId === regId) setWinnerId(null);
+                                      }
+                                    }}
+                                    style={{
+                                      width: "44px", height: "24px", borderRadius: "12px", border: "none",
+                                      background: !isCheckedIn ? "rgba(255,255,255,0.04)" : currentRole === "runner_up" ? "#d1d5db" : "rgba(255,255,255,0.1)",
+                                      position: "relative", cursor: isCheckedIn ? "pointer" : "not-allowed", transition: "background 0.2s ease",
+                                      opacity: isCheckedIn ? 1 : 0.35,
+                                    }}
+                                  >
+                                    <span style={{
+                                      position: "absolute", top: "3px",
+                                      left: currentRole === "runner_up" ? "22px" : "3px",
+                                      width: "18px", height: "18px", borderRadius: "50%",
+                                      background: "white", transition: "left 0.2s ease",
+                                      boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                                    }} />
+                                  </button>
+                                </td>
+                                {/* Participant toggle */}
+                                <td style={{ padding: "12px 14px" }}>
+                                  <button
+                                    type="button"
+                                    disabled={!isCheckedIn}
+                                    onClick={() => {
+                                      if (!isCheckedIn) return;
+                                      if (winnerId === regId) setWinnerId(null);
+                                      if (runnerId === regId) setRunnerId(null);
+                                    }}
+                                    style={{
+                                      width: "44px", height: "24px", borderRadius: "12px", border: "none",
+                                      background: !isCheckedIn ? "rgba(255,255,255,0.04)" : currentRole === "participant" ? "#3b82f6" : "rgba(255,255,255,0.1)",
+                                      position: "relative", cursor: isCheckedIn ? "pointer" : "not-allowed", transition: "background 0.2s ease",
+                                      opacity: isCheckedIn ? 1 : 0.35,
+                                    }}
+                                  >
+                                    <span style={{
+                                      position: "absolute", top: "3px",
+                                      left: currentRole === "participant" ? "22px" : "3px",
+                                      width: "18px", height: "18px", borderRadius: "50%",
+                                      background: "white", transition: "left 0.2s ease",
+                                      boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                                    }} />
+                                  </button>
+                                </td>
+                                {/* Edit button */}
+                                <td style={{ padding: "12px 14px" }}>
+                                  {editingRegId === regId ? (
+                                    <div style={{ display: "flex", gap: "6px" }}>
+                                      <button
+                                        type="button"
+                                        disabled={savingEdit}
+                                        onClick={async () => {
+                                          setSavingEdit(true);
+                                          const result = await updateRegistrationDetailsAction(
+                                            regId,
+                                            overviewEventId,
+                                            editName,
+                                            editEmail
+                                          );
+                                          if (result?.error) {
+                                            setMsg(result.error);
+                                          } else {
+                                            setMsg("Participant updated successfully.");
+                                            router.refresh();
+                                          }
+                                          setSavingEdit(false);
+                                          setEditingRegId(null);
+                                        }}
+                                        style={{
+                                          width: "30px", height: "30px", borderRadius: "8px", border: "none",
+                                          background: "rgba(16,185,129,0.15)", color: "#10b981",
+                                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                          cursor: savingEdit ? "wait" : "pointer",
+                                          opacity: savingEdit ? 0.5 : 1,
+                                        }}
+                                        title="Save"
+                                      >
+                                        <Check size={14} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingRegId(null)}
+                                        style={{
+                                          width: "30px", height: "30px", borderRadius: "8px", border: "none",
+                                          background: "rgba(239,68,68,0.12)", color: "#ef4444",
+                                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                          cursor: "pointer",
+                                        }}
+                                        title="Cancel"
+                                      >
+                                        <X size={14} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingRegId(regId);
+                                        setEditName(String(registration.full_name || ""));
+                                        setEditEmail(String(registration.email || ""));
+                                      }}
+                                      style={{
+                                        width: "30px", height: "30px", borderRadius: "8px", border: "none",
+                                        background: "rgba(88,115,255,0.1)", color: "var(--primary-soft)",
+                                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                        cursor: "pointer", transition: "background 0.2s ease",
+                                      }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(88,115,255,0.2)"; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(88,115,255,0.1)"; }}
+                                      title="Edit name & email"
+                                    >
+                                      <Pencil size={14} />
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                              {/* Inline edit row */}
+                              {editingRegId === regId && (
+                                <tr style={{
+                                  borderBottom: "1px solid rgba(88,115,255,0.15)",
+                                  background: "rgba(88,115,255,0.04)",
+                                }}>
+                                  <td style={{ padding: "8px 14px" }}>
+                                    <input
+                                      type="text"
+                                      value={editName}
+                                      onChange={(e) => setEditName(e.target.value)}
+                                      placeholder="Full name"
+                                      style={{
+                                        width: "100%", padding: "7px 10px", borderRadius: "8px",
+                                        border: "1px solid rgba(88,115,255,0.25)",
+                                        background: "rgba(255,255,255,0.04)", color: "var(--foreground)",
+                                        fontSize: "0.84rem", outline: "none",
+                                      }}
+                                      onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(88,115,255,0.5)"; }}
+                                      onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(88,115,255,0.25)"; }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: "8px 14px" }}>
+                                    <input
+                                      type="email"
+                                      value={editEmail}
+                                      onChange={(e) => setEditEmail(e.target.value)}
+                                      placeholder="Email"
+                                      style={{
+                                        width: "100%", padding: "7px 10px", borderRadius: "8px",
+                                        border: "1px solid rgba(88,115,255,0.25)",
+                                        background: "rgba(255,255,255,0.04)", color: "var(--foreground)",
+                                        fontSize: "0.84rem", outline: "none",
+                                      }}
+                                      onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(88,115,255,0.5)"; }}
+                                      onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(88,115,255,0.25)"; }}
+                                    />
+                                  </td>
+                                  <td colSpan={6} style={{ padding: "8px 14px", fontSize: "0.72rem", color: "var(--muted-foreground)" }}>
+                                    ✏️ Editing — press <strong style={{ color: "#10b981" }}>✓</strong> to save or <strong style={{ color: "#ef4444" }}>✕</strong> to cancel
+                                  </td>
+                                </tr>
+                              )}
+                              {/* Team member sub-rows */}
+                              {isExpanded && teamMembers.length > 0 && teamMembers.map((member, mIdx) => (
+                                <tr key={`${regId}-m${mIdx}`} style={{
+                                  borderBottom: "1px solid rgba(255,255,255,0.03)",
+                                  background: "rgba(99,102,241,0.03)",
+                                }}>
+                                  <td style={{ padding: "8px 14px 8px 38px", fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
+                                    <span style={{ marginRight: "6px", opacity: 0.5 }}>└</span>
+                                    {member.name || "—"}
+                                  </td>
+                                  <td style={{ padding: "8px 14px", fontSize: "0.82rem", color: "var(--muted-foreground)" }}>
+                                    {member.email || "—"}
+                                  </td>
+                                  <td colSpan={6} style={{ padding: "8px 14px" }}>
+                                    <span style={{ fontSize: "0.68rem", color: "var(--muted-foreground)", opacity: 0.6 }}>Team Member {mIdx + 2}</span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Action buttons */}
+                {overviewRegistrations.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {!showTemplatePanel ? (
+                      <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          style={{ padding: "10px 20px", fontSize: "0.88rem" }}
+                          onClick={() => setOverviewEventId(null)}
+                        >
+                          <X size={15} /> Close
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          style={{ padding: "10px 24px", fontSize: "0.92rem" }}
+                          onClick={() => setShowTemplatePanel(true)}
+                        >
+                          <LayoutTemplate size={16} />
+                          Select Template & Issue Certificates →
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          borderRadius: "16px",
+                          border: "1px solid rgba(88,115,255,0.15)",
+                          background: "linear-gradient(180deg, rgba(88,115,255,0.04), rgba(8,10,22,0.5))",
+                          padding: "24px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "18px" }}>
+                          <LayoutTemplate size={18} style={{ color: "var(--primary-soft)" }} />
+                          <span className="font-semibold" style={{ fontSize: "0.95rem" }}>Select Templates by Category</span>
+                        </div>
+                        <p style={{ color: "var(--muted-foreground)", fontSize: "0.82rem", marginBottom: "18px", lineHeight: 1.6 }}>
+                          Choose a certificate template for each category. Winner, Runner-Up, and Participant can each have a different design.
+                        </p>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "14px", marginBottom: "18px" }}>
+                          {/* Winner template */}
+                          <div style={{
+                            padding: "14px",
+                            borderRadius: "12px",
+                            border: "1px solid rgba(251,191,36,0.15)",
+                            background: "rgba(251,191,36,0.04)",
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                              <Trophy size={15} color="#fbbf24" />
+                              <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "#fbbf24" }}>Winner Template</span>
+                              <span style={{ fontSize: "0.72rem", color: "var(--muted-foreground)", marginLeft: "auto" }}>
+                                {winnerId ? "1 assigned" : "None assigned"}
+                              </span>
+                            </div>
+                            <select
+                              value={winnerTemplateId}
+                              onChange={(e) => setWinnerTemplateId(e.target.value)}
+                              className="input-field"
+                              style={{ fontSize: "0.85rem" }}
+                              disabled={!winnerId}
+                            >
+                              {templates.map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Runner-up template */}
+                          <div style={{
+                            padding: "14px",
+                            borderRadius: "12px",
+                            border: "1px solid rgba(209,213,219,0.15)",
+                            background: "rgba(209,213,219,0.04)",
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                              <Medal size={15} color="#d1d5db" />
+                              <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "#d1d5db" }}>Runner-Up Template</span>
+                              <span style={{ fontSize: "0.72rem", color: "var(--muted-foreground)", marginLeft: "auto" }}>
+                                {runnerId ? "1 assigned" : "None assigned"}
+                              </span>
+                            </div>
+                            <select
+                              value={runnerTemplateId}
+                              onChange={(e) => setRunnerTemplateId(e.target.value)}
+                              className="input-field"
+                              style={{ fontSize: "0.85rem" }}
+                              disabled={!runnerId}
+                            >
+                              {templates.map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Participant template */}
+                          <div style={{
+                            padding: "14px",
+                            borderRadius: "12px",
+                            border: "1px solid rgba(59,130,246,0.15)",
+                            background: "rgba(59,130,246,0.04)",
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                              <Award size={15} color="#3b82f6" />
+                              <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "#3b82f6" }}>Participant Template</span>
+                              <span style={{ fontSize: "0.72rem", color: "var(--muted-foreground)", marginLeft: "auto" }}>
+                                {overviewRegistrations.length - (winnerId ? 1 : 0) - (runnerId ? 1 : 0)} assigned
+                              </span>
+                            </div>
+                            <select
+                              value={participantTemplateId}
+                              onChange={(e) => setParticipantTemplateId(e.target.value)}
+                              className="input-field"
+                              style={{ fontSize: "0.85rem" }}
+                            >
+                              {templates.map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Send email checkbox */}
+                        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.88rem", marginBottom: "18px" }}>
+                          <input
+                            type="checkbox"
+                            checked={sendEmailEvents}
+                            onChange={(e) => setSendEmailEvents(e.target.checked)}
+                          />
+                          Send certificates by email to participants
+                        </label>
+
+                        {/* Summary */}
+                        <div style={{
+                          padding: "12px 16px",
+                          borderRadius: "10px",
+                          background: "rgba(255,255,255,0.02)",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          marginBottom: "18px",
+                          fontSize: "0.82rem",
+                          color: "var(--muted-foreground)",
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: "16px",
+                        }}>
+                          <span>Total: <strong style={{ color: "var(--foreground)" }}>{overviewRegistrations.length}</strong> participants</span>
+                          <span>✅ Checked In: <strong style={{ color: "#10b981" }}>{overviewRegistrations.filter(r => r.checked_in).length}</strong></span>
+                          {overviewRegistrations.some(r => !r.checked_in) && (
+                            <span style={{ color: "#f59e0b" }}>⚠️ {overviewRegistrations.filter(r => !r.checked_in).length} not checked in (will be skipped)</span>
+                          )}
+                          {winnerId && <span>🏆 Winner: <strong style={{ color: "#fbbf24" }}>{String(overviewRegistrations.find(r => String(r.id) === winnerId)?.full_name || "—")}</strong></span>}
+                          {runnerId && <span>🥈 Runner: <strong style={{ color: "#d1d5db" }}>{String(overviewRegistrations.find(r => String(r.id) === runnerId)?.full_name || "—")}</strong></span>}
+                        </div>
+
+                        {/* Buttons */}
+                        <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            style={{ padding: "10px 20px", fontSize: "0.88rem" }}
+                            onClick={() => setShowTemplatePanel(false)}
+                          >
+                            ← Back to Roles
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            style={{ padding: "10px 24px", fontSize: "0.92rem" }}
+                            disabled={issuingCerts}
+                            onClick={async () => {
+                              if (sendEmailEvents) {
+                                await requestMailIntent({ kind: "role-based-generate" });
+                                return;
+                              }
+
+                              await executePendingMailIntent({ kind: "role-based-generate" });
+                            }}
+                          >
+                            <Send size={16} />
+                            {issuingCerts ? "Issuing Certificates..." : `Issue ${overviewRegistrations.length} Certificate(s)`}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}
-
-          {!eventsTabEventId ? (
-            <div style={{ padding: "40px", textAlign: "center", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)" }}>
-              <CalendarDays size={36} style={{ margin: "0 auto 12px", color: "var(--primary-soft)" }} />
-              <p style={{ color: "var(--muted-foreground)" }}>Select an event above to view registered users.</p>
-            </div>
-          ) : filteredRegistrations.length === 0 ? (
-            <div style={{ padding: "40px", textAlign: "center", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)" }}>
-              <Users size={36} style={{ margin: "0 auto 12px", color: "var(--primary-soft)" }} />
-              <p style={{ color: "var(--muted-foreground)" }}>No registrations for this event yet.</p>
-            </div>
-          ) : (
-            <div style={{ borderRadius: "14px", border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}>
-              <table className="schedule-table" style={{ width: "100%" }}>
-                <thead>
-                  <tr style={{ background: "rgba(255,255,255,0.02)" }}>
-                    {["#", "Name", "Email", "Phone", "College/Org", "Payment", "Registered"].map((heading) => (
-                      <th key={heading} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.75rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                        {heading}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRegistrations.map((registration, index) => (
-                    <tr key={String(registration.id)} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                      <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem" }}>{index + 1}</td>
-                      <td style={{ padding: "12px 16px", fontWeight: 600 }}>{String(registration.full_name || "—")}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--muted-foreground)" }}>{String(registration.email || "—")}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--muted-foreground)" }}>{String(registration.phone || "—")}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(registration.college_name || "—")}</td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span className={`badge ${registration.payment_status === "paid" ? "badge-success" : "badge-warning"}`}>{String(registration.payment_status || "pending")}</span>
-                      </td>
-                      <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
-                        {formatUtcDate(registration.created_at, { day: "numeric", month: "short" })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       ) : (
         <>
@@ -652,7 +1601,18 @@ export function CertificatesClient({
                   Send issued certificates by email when recipient email is available
                 </label>
 
-                <button onClick={handleIssue} className="btn-primary" disabled={!selectedEventId || !selectedTemplateId || loading || customTemplateNeedsSetup}>
+                <button
+                  onClick={() => {
+                    if (sendEmail) {
+                      void requestMailIntent({ kind: "bulk-generate" });
+                      return;
+                    }
+
+                    void handleIssue();
+                  }}
+                  className="btn-primary"
+                  disabled={!selectedEventId || !selectedTemplateId || loading || customTemplateNeedsSetup}
+                >
                   <span className="inline-flex items-center gap-2">
                     <Trophy size={16} />
                     {loading ? "Generating..." : "Generate Bulk Certificates"}
@@ -662,55 +1622,311 @@ export function CertificatesClient({
             </div>
           </div>
 
-          <div className="glass-card" style={{ overflow: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "980px" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  {["Certificate ID", "Recipient", "Category", "Template", "Event", "Status", "Issued", "View"].map((heading) => (
-                    <th key={heading} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.75rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                      {heading}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {certificates.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} style={{ padding: "40px", textAlign: "center", color: "var(--muted-foreground)" }}>
-                      No certificates issued yet.
-                    </td>
-                  </tr>
-                ) : (
-                  certificates.map((certificate) => (
-                    <tr key={String(certificate.id)} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                      <td style={{ padding: "12px 16px" }}>
-                        <code style={{ fontSize: "0.85rem", color: "var(--primary-soft)" }}>{String(certificate.certificate_id_display || "—")}</code>
-                      </td>
-                      <td style={{ padding: "12px 16px", fontWeight: 500 }}>{String(certificate.recipient_name || "—")}</td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span className={`badge ${categoryColors[String(certificate.category || "participant")] || "badge-info"}`}>{String(certificate.category || "participant").replace("_", " ")}</span>
-                      </td>
-                      <td style={{ padding: "12px 16px", fontSize: "0.84rem", color: "var(--foreground)" }}>{String(certificate.template_name || "—")}</td>
-                      <td style={{ padding: "12px 16px", fontSize: "0.84rem", color: "var(--muted-foreground)" }}>{String(certificate.event_name || "—")}</td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span className={`badge ${statusColors[String(certificate.status || "active")] || "badge-neutral"}`}>{String(certificate.status || "active")}</span>
-                      </td>
-                      <td style={{ padding: "12px 16px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
-                        {formatUtcDate(certificate.issued_at, { day: "numeric", month: "short", year: "numeric" })}
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <Link href={`/dashboard/certificates/${String(certificate.id)}`} className="btn-secondary" style={{ padding: "6px 10px", fontSize: "0.78rem" }}>
-                          Open
-                        </Link>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          {/* ── Issued Certificates grouped by Event ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            <div className="inline-flex items-center gap-2" style={{ color: "var(--primary-soft)" }}>
+              <Award size={18} />
+              <span className="font-semibold">Issued Certificates</span>
+              <span style={{ fontSize: "0.78rem", color: "var(--muted-foreground)", marginLeft: "8px" }}>
+                Grouped by event — {certificates.length} total
+              </span>
+            </div>
+
+            {certificates.length === 0 ? (
+              <div className="glass-card" style={{ padding: "48px", textAlign: "center" }}>
+                <Award size={40} style={{ margin: "0 auto 12px", color: "var(--primary-soft)", opacity: 0.5 }} />
+                <p style={{ color: "var(--muted-foreground)" }}>No certificates issued yet. Use the Events tab to assign roles and issue certificates.</p>
+              </div>
+            ) : (
+              groupedCertificates.map(([eid, group]) => {
+                  const catColorMap: Record<string, string> = {
+                    hackathon: "#818cf8", workshop: "#10b981", seminar: "#f59e0b",
+                    conference: "#3b82f6", competition: "#ef4444", webinar: "#8b5cf6", other: "#6b7280",
+                  };
+                  const matchedEvent = events.find((e) => String(e.id) === eid);
+                  const evtCategory = String(matchedEvent?.category || "other").toLowerCase();
+                  const catColor = catColorMap[evtCategory] || catColorMap.other;
+                  return (
+                    <div
+                      key={eid}
+                      className="glass-card"
+                      style={{ overflow: "hidden", padding: 0 }}
+                    >
+                      {/* Event group header */}
+                      <div
+                        style={{
+                          padding: "16px 22px",
+                          background: `linear-gradient(135deg, ${catColor}08, transparent)`,
+                          borderBottom: "1px solid rgba(255,255,255,0.06)",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: "12px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                          <div
+                            style={{
+                              width: "4px", height: "28px", borderRadius: "4px",
+                              background: catColor, flexShrink: 0,
+                            }}
+                          />
+                          <div style={{ minWidth: 0 }}>
+                            <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "white", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {group.eventName}
+                            </h3>
+                            {matchedEvent && (
+                              <span style={{ fontSize: "0.72rem", color: catColor, textTransform: "capitalize" }}>
+                                {evtCategory}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          <span style={{
+                            padding: "4px 14px", borderRadius: "20px",
+                            background: `${catColor}15`, border: `1px solid ${catColor}30`,
+                            fontSize: "0.78rem", fontWeight: 600, color: catColor,
+                          }}>
+                            {group.certs.length} certificate{group.certs.length !== 1 ? "s" : ""}
+                          </span>
+                          {(() => {
+                            const emailableIds = group.certs
+                              .filter((certificate) => String(certificate.recipient_email || "").trim())
+                              .map((certificate) => String(certificate.id));
+                            const selectedInGroup = emailableIds.filter((id) => selectedCertificateIds.includes(id));
+                            if (emailableIds.length === 0) return null;
+
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn-secondary"
+                                  style={{ padding: "6px 10px", fontSize: "0.76rem" }}
+                                  onClick={() => toggleEventCertificateSelection(emailableIds)}
+                                >
+                                  {selectedInGroup.length === emailableIds.length ? "Clear Selection" : "Select All"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-secondary"
+                                  style={{ padding: "6px 10px", fontSize: "0.76rem" }}
+                                  disabled={sendingCertificates || selectedInGroup.length === 0}
+                                  onClick={() => void requestMailIntent({ kind: "send-certificates", certificateIds: selectedInGroup })}
+                                >
+                                  <Send size={14} />
+                                  Send Selected
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-secondary"
+                                  style={{ padding: "6px 10px", fontSize: "0.76rem" }}
+                                  disabled={sendingCertificates}
+                                  onClick={() => void requestMailIntent({ kind: "send-certificates", certificateIds: emailableIds })}
+                                >
+                                  <Mail size={14} />
+                                  Send All
+                                </button>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Certificates table for this event */}
+                      <div style={{ overflow: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "920px" }}>
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                              {["", "Certificate ID", "Recipient", "Category", "Template", "Status", "Issued", "Send", "View"].map((heading) => (
+                                <th key={heading} style={{ padding: "10px 16px", textAlign: "left", fontSize: "0.72rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                                  {heading}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.certs.map((certificate) => (
+                              <tr key={String(certificate.id)} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                                <td style={{ padding: "11px 16px" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCertificateIds.includes(String(certificate.id))}
+                                    disabled={!String(certificate.recipient_email || "").trim()}
+                                    onChange={() => toggleCertificateSelection(String(certificate.id))}
+                                  />
+                                </td>
+                                <td style={{ padding: "11px 16px" }}>
+                                  <code style={{ fontSize: "0.83rem", color: "var(--primary-soft)" }}>{String(certificate.certificate_id_display || "—")}</code>
+                                </td>
+                                <td style={{ padding: "11px 16px", fontSize: "0.9rem" }}>
+                                  <div style={{ fontWeight: 500 }}>{String(certificate.recipient_name || "—")}</div>
+                                  <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginTop: "6px", color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
+                                    <span>{String(certificate.recipient_email || "No email address")}</span>
+                                    {String(certificate.recipient_email || "").trim() ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => void requestMailIntent({ kind: "send-certificates", certificateIds: [String(certificate.id)] })}
+                                        disabled={sendingCertificates}
+                                        title="Send certificate by email"
+                                        style={{
+                                          width: "28px",
+                                          height: "28px",
+                                          borderRadius: "999px",
+                                          border: "1px solid rgba(88,115,255,0.24)",
+                                          background: "rgba(88,115,255,0.08)",
+                                          color: "var(--primary-soft)",
+                                          display: "inline-flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        <Mail size={14} />
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                </td>
+                                <td style={{ padding: "11px 16px" }}>
+                                  <span className={`badge ${categoryColors[String(certificate.category || "participant")] || "badge-info"}`}>
+                                    {String(certificate.category || "participant").replace("_", " ")}
+                                  </span>
+                                </td>
+                                <td style={{ padding: "11px 16px", fontSize: "0.84rem", color: "var(--foreground)" }}>{String(certificate.template_name || "—")}</td>
+                                <td style={{ padding: "11px 16px" }}>
+                                  <span className={`badge ${statusColors[String(certificate.status || "active")] || "badge-neutral"}`}>{String(certificate.status || "active")}</span>
+                                </td>
+                                <td style={{ padding: "11px 16px", fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
+                                  {formatUtcDate(certificate.issued_at, { day: "numeric", month: "short", year: "numeric" })}
+                                </td>
+                                <td style={{ padding: "11px 16px" }}>
+                                  <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    style={{ padding: "6px 8px", fontSize: "0.78rem" }}
+                                    disabled={sendingCertificates || !String(certificate.recipient_email || "").trim()}
+                                    onClick={() =>
+                                      void requestMailIntent({
+                                        kind: "send-certificates",
+                                        certificateIds: [String(certificate.id)],
+                                      })
+                                    }
+                                  >
+                                    <Mail size={14} />
+                                  </button>
+                                </td>
+                                <td style={{ padding: "11px 16px" }}>
+                                  <Link href={`/dashboard/certificates/${String(certificate.id)}`} className="btn-secondary" style={{ padding: "6px 10px", fontSize: "0.78rem" }}>
+                                    Open
+                                  </Link>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+              })
+            )}
           </div>
         </>
       )}
+
+      {smtpModalOpen ? (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(3, 8, 20, 0.74)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 85, padding: "24px" }} onClick={() => setSmtpModalOpen(false)}>
+          <div className="glass-card" style={{ width: "min(820px, 100%)", maxHeight: "92vh", overflow: "auto", padding: "24px" }} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "16px" }}>
+              <div>
+                <h2 className="text-xl font-bold" style={{ marginBottom: "4px" }}>Configure SMTP Before Sending</h2>
+                <p style={{ color: "var(--muted-foreground)", margin: 0 }}>
+                  Add your organization SMTP details here. Once saved, the pending certificate send action will continue automatically.
+                </p>
+              </div>
+              <button type="button" onClick={() => setSmtpModalOpen(false)} style={{ width: "36px", height: "36px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--foreground)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem" }}>
+                <input type="checkbox" checked={smtpForm.enabled} onChange={(event) => setSmtpForm((current) => ({ ...current, enabled: event.target.checked }))} />
+                Enable SMTP delivery
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem" }}>
+                <input type="checkbox" checked={smtpForm.secure} onChange={(event) => setSmtpForm((current) => ({ ...current, secure: event.target.checked }))} />
+                Use secure connection
+              </label>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: "16px", marginBottom: "16px" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>SMTP Host</label>
+                <input className="input-field" value={smtpForm.host} onChange={(event) => setSmtpForm((current) => ({ ...current, host: event.target.value }))} placeholder="smtp.gmail.com" />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Port</label>
+                <input type="number" className="input-field" value={smtpForm.port} onChange={(event) => setSmtpForm((current) => ({ ...current, port: event.target.value }))} />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>SMTP Username</label>
+                <input className="input-field" value={smtpForm.username} onChange={(event) => setSmtpForm((current) => ({ ...current, username: event.target.value }))} placeholder="mailer@yourorg.com" />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>SMTP Password</label>
+                <input type="password" className="input-field" value={smtpForm.password} onChange={(event) => setSmtpForm((current) => ({ ...current, password: event.target.value }))} placeholder={smtpConfig?.smtp_password ? "Saved password" : "App password or mailbox password"} />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>From Name</label>
+                <input className="input-field" value={smtpForm.fromName} onChange={(event) => setSmtpForm((current) => ({ ...current, fromName: event.target.value }))} placeholder="ProofPass Labs" />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>From Email</label>
+                <input type="email" className="input-field" value={smtpForm.fromEmail} onChange={(event) => setSmtpForm((current) => ({ ...current, fromEmail: event.target.value }))} placeholder="events@yourorg.com" />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Reply-To Email</label>
+              <input type="email" className="input-field" value={smtpForm.replyTo} onChange={(event) => setSmtpForm((current) => ({ ...current, replyTo: event.target.value }))} placeholder="team@yourorg.com" />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "18px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem" }}>
+                <input type="checkbox" checked={smtpForm.sendRegistrationEmails} onChange={(event) => setSmtpForm((current) => ({ ...current, sendRegistrationEmails: event.target.checked }))} />
+                Auto-send registration confirmations
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.9rem" }}>
+                <input type="checkbox" checked={smtpForm.sendCertificateEmails} onChange={(event) => setSmtpForm((current) => ({ ...current, sendCertificateEmails: event.target.checked }))} />
+                Auto-send certificate delivery mails
+              </label>
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+              <button type="button" onClick={() => void handleSaveSmtp()} className="btn-primary" disabled={savingSmtp}>
+                <Save size={16} />
+                {savingSmtp ? "Saving..." : pendingMailIntent ? "Save SMTP & Continue" : "Save SMTP"}
+              </button>
+              <button type="button" onClick={() => void handleTestSmtp()} className="btn-secondary" disabled={testingSmtp}>
+                <Send size={16} />
+                {testingSmtp ? "Testing..." : "Test Connection"}
+              </button>
+            </div>
+
+            {smtpMessage ? (
+              <div style={{ marginTop: "14px", padding: "12px 14px", borderRadius: "12px", background: isErrorMessage(smtpMessage) ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", color: isErrorMessage(smtpMessage) ? "var(--danger)" : "var(--success)", fontSize: "0.875rem" }}>
+                {smtpMessage}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {previewTemplate ? (
         <div style={{ position: "fixed", inset: 0, background: "rgba(3, 8, 20, 0.74)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 80, padding: "24px" }} onClick={() => setPreviewTemplateId(null)}>

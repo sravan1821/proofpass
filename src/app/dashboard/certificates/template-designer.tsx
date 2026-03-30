@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { MousePointer2, Move, Trash2 } from "lucide-react";
 
 import { CertificateSurface } from "@/components/certificates/certificate-surface";
@@ -159,21 +159,28 @@ export function TemplateDesigner({
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  useEffect(() => {
-    if (!layout.placements.some((placement) => placement.id === selectedPlacementId)) {
-      setSelectedPlacementId(layout.placements[0]?.id ?? null);
-    }
-  }, [layout.placements, selectedPlacementId]);
+  const resolvedSelectedPlacementId = useMemo(
+    () =>
+      layout.placements.some((placement) => placement.id === selectedPlacementId)
+        ? selectedPlacementId
+        : (layout.placements[0]?.id ?? null),
+    [layout.placements, selectedPlacementId],
+  );
 
-  useEffect(() => {
-    if (!registrations.some((registration) => String(registration.id) === sampleRegistrationId)) {
-      setSampleRegistrationId(String(registrations[0]?.id ?? ""));
-    }
-  }, [registrations, sampleRegistrationId]);
+  const resolvedSampleRegistrationId = useMemo(
+    () =>
+      registrations.some((registration) => String(registration.id) === sampleRegistrationId)
+        ? sampleRegistrationId
+        : String(registrations[0]?.id ?? ""),
+    [registrations, sampleRegistrationId],
+  );
 
   const sampleRegistration = useMemo(
-    () => registrations.find((registration) => String(registration.id) === sampleRegistrationId) ?? registrations[0] ?? null,
-    [registrations, sampleRegistrationId],
+    () =>
+      registrations.find((registration) => String(registration.id) === resolvedSampleRegistrationId) ??
+      registrations[0] ??
+      null,
+    [registrations, resolvedSampleRegistrationId],
   );
 
   const sampleEvent = useMemo(() => {
@@ -253,7 +260,7 @@ export function TemplateDesigner({
     ],
   );
 
-  const selectedPlacement = layout.placements.find((placement) => placement.id === selectedPlacementId) ?? null;
+  const selectedPlacement = layout.placements.find((placement) => placement.id === resolvedSelectedPlacementId) ?? null;
 
   const groupedFields = useMemo(() => {
     const groups: Array<{ key: string; title: string }> = [
@@ -279,12 +286,12 @@ export function TemplateDesigner({
     };
   }
 
-  function updatePlacements(nextPlacements: CertificateTemplatePlacement[]) {
+  const updatePlacements = useCallback((nextPlacements: CertificateTemplatePlacement[]) => {
     onChange({
       ...layoutRef.current,
       placements: nextPlacements,
     });
-  }
+  }, [onChange]);
 
   function upsertPlacement(sourceKey: CertificateFieldSourceKey, pointX: number, pointY: number) {
     const currentLayout = layoutRef.current;
@@ -374,7 +381,7 @@ export function TemplateDesigner({
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, []);
+  }, [updatePlacements]);
 
   function updateSelectedPlacement(patch: Partial<CertificateTemplatePlacement>) {
     if (!selectedPlacement) return;
@@ -409,7 +416,7 @@ export function TemplateDesigner({
 
         <div style={{ padding: "14px", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
           <label style={{ display: "block", marginBottom: "8px", fontSize: "0.82rem", color: "var(--muted-foreground)" }}>Preview with registered user</label>
-          <select className="input-field" value={sampleRegistrationId} onChange={(event) => setSampleRegistrationId(event.target.value)}>
+          <select className="input-field" value={resolvedSampleRegistrationId} onChange={(event) => setSampleRegistrationId(event.target.value)}>
             {registrations.length === 0 ? <option value="">No registrations yet</option> : null}
             {registrations.map((registration) => (
               <option key={String(registration.id)} value={String(registration.id)}>

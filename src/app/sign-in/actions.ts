@@ -45,5 +45,5 @@ export async function signInAction(formData: FormData) {
 
 export async function signOutAction() {
   await clearUserSession();
-  redirect("/sign-in");
+  redirect("/");
 }
