@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { Fragment, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   Award,
   CalendarDays,
@@ -974,8 +974,8 @@ export function CertificatesClient({
                           const isExpanded = expandedTeam === regId;
 
                           return (
-                            <>
-                              <tr key={regId} style={{
+                            <Fragment key={regId}>
+                              <tr style={{
                                 borderBottom: "1px solid rgba(255,255,255,0.06)",
                                 background: !isCheckedIn
                                   ? "rgba(239,68,68,0.02)"
@@ -1267,7 +1267,7 @@ export function CertificatesClient({
                                   </td>
                                 </tr>
                               ))}
-                            </>
+                            </Fragment>
                           );
                         })
                       )}
