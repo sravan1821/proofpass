@@ -15,6 +15,14 @@ export interface OrganizerSmtpSettings {
   sendCertificateEmails?: boolean;
 }
 
+export interface OrganizerMailAttachment {
+  filename: string;
+  content: Buffer | string;
+  contentType?: string;
+  cid?: string;
+  disposition?: "attachment" | "inline";
+}
+
 export async function getOrganizerSmtpSettings(organizerId: string): Promise<OrganizerSmtpSettings | null> {
   const supabase = await createMongoServerClient();
   if (!supabase) return null;
@@ -73,6 +81,7 @@ export async function sendOrganizerEmail(params: {
   subject: string;
   html: string;
   text?: string;
+  attachments?: OrganizerMailAttachment[];
 }) {
   const settings = await getOrganizerSmtpSettings(params.organizerId);
   if (!settings) {
@@ -87,6 +96,7 @@ export async function sendOrganizerEmail(params: {
     subject: params.subject,
     html: params.html,
     text: params.text,
+    attachments: params.attachments,
   });
 
   return { success: true };

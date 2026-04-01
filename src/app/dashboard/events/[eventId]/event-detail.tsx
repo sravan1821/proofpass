@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, Mail, Send, Users, Trophy, Award, UserCheck, Eye } from "lucide-react";
+import { ExternalLink, Mail, Send, Users, Trophy, Award, UserCheck, Eye, Copy } from "lucide-react";
 import {
   addParticipantAction,
   deleteParticipantAction,
@@ -11,6 +11,8 @@ import {
   saveOverviewParticipantsAction,
 } from "../actions";
 import Link from "next/link";
+import ShareButton from "@/components/share-button";
+import { buildPublicUrl } from "@/lib/public-url";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface EventDetailClientProps {
@@ -29,6 +31,7 @@ export function EventDetailClient({ event, participants, registrations }: EventD
   const [mailSubject, setMailSubject] = useState(`${String(event.name)} update`);
   const [mailMessage, setMailMessage] = useState("");
   const [mailAudience, setMailAudience] = useState("all");
+  const [shareMsg, setShareMsg] = useState("");
 
   // Overview state — winner / runner selection
   const [winnerId, setWinnerId] = useState<string | null>(null);
@@ -113,12 +116,28 @@ export function EventDetailClient({ event, participants, registrations }: EventD
     { key: "email", label: "Email Updates", icon: <Mail size={16} /> },
     { key: "participants", label: `Participants (${participants.length})`, icon: <UserCheck size={16} /> },
   ];
+  const eventPath = `/events/${String(event.slug)}/register`;
+  const eventPageUrl =
+    typeof window !== "undefined"
+      ? buildPublicUrl(eventPath, window.location.origin)
+      : buildPublicUrl(eventPath);
+
+  async function handleCopyEventLink() {
+    try {
+      await navigator.clipboard.writeText(eventPageUrl);
+      setShareMsg("Event link copied.");
+      setTimeout(() => setShareMsg(""), 2500);
+    } catch {
+      setShareMsg("Could not copy the event link.");
+      setTimeout(() => setShareMsg(""), 2500);
+    }
+  }
 
   return (
     <div>
-      {msg ? (
-        <div style={{ background: msg.toLowerCase().includes("success") || msg.toLowerCase().includes("sent") || msg.toLowerCase().includes("saved") ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${msg.toLowerCase().includes("success") || msg.toLowerCase().includes("sent") || msg.toLowerCase().includes("saved") ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`, borderRadius: "10px", padding: "12px", marginBottom: "16px", color: msg.toLowerCase().includes("success") || msg.toLowerCase().includes("sent") || msg.toLowerCase().includes("saved") ? "var(--success)" : "var(--danger)", fontSize: "0.875rem" }}>
-          {msg}
+      {msg || shareMsg ? (
+        <div style={{ background: (msg || shareMsg).toLowerCase().includes("success") || (msg || shareMsg).toLowerCase().includes("sent") || (msg || shareMsg).toLowerCase().includes("saved") || (msg || shareMsg).toLowerCase().includes("copied") ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${(msg || shareMsg).toLowerCase().includes("success") || (msg || shareMsg).toLowerCase().includes("sent") || (msg || shareMsg).toLowerCase().includes("saved") || (msg || shareMsg).toLowerCase().includes("copied") ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`, borderRadius: "10px", padding: "12px", marginBottom: "16px", color: (msg || shareMsg).toLowerCase().includes("success") || (msg || shareMsg).toLowerCase().includes("sent") || (msg || shareMsg).toLowerCase().includes("saved") || (msg || shareMsg).toLowerCase().includes("copied") ? "var(--success)" : "var(--danger)", fontSize: "0.875rem" }}>
+          {msg || shareMsg}
         </div>
       ) : null}
 
@@ -128,16 +147,37 @@ export function EventDetailClient({ event, participants, registrations }: EventD
           <div>
             <h1 className="text-2xl font-bold mb-1">{event.name as string}</h1>
             <p style={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>{event.description as string}</p>
+            <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginTop: "10px", wordBreak: "break-all" }}>
+              Share link: <a href={eventPageUrl} target="_blank" rel="noreferrer" style={{ color: "var(--primary-soft)" }}>{eventPageUrl}</a>
+            </p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Link
-              href={`/events/${event.slug}/register`}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <a
+              href={eventPageUrl}
               target="_blank"
+              rel="noreferrer"
               style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 14px", borderRadius: "8px", background: "rgba(88,115,255,0.1)", border: "1px solid rgba(88,115,255,0.2)", fontSize: "0.8rem", color: "var(--primary-soft)", fontWeight: 500 }}
             >
               <ExternalLink size={14} />
               Event Page
-            </Link>
+            </a>
+            <button
+              type="button"
+              onClick={handleCopyEventLink}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 14px", borderRadius: "8px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontSize: "0.8rem", color: "var(--foreground)", fontWeight: 500, cursor: "pointer" }}
+            >
+              <Copy size={14} />
+              Copy Link
+            </button>
+            <ShareButton
+              eventName={String(event.name)}
+              eventDescription={(event.description as string) || undefined}
+              eventSlug={String(event.slug)}
+              eventDate={event.start_date ? new Date(event.start_date as string).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : undefined}
+              eventVenue={(event.venue_details as string) || (event.venue as string) || undefined}
+              eventFee={event.registration_fee as string | number | null | undefined}
+              variant="full"
+            />
             <span className={`badge ${event.status === "completed" ? "badge-success" : event.status === "draft" ? "badge-neutral" : "badge-info"}`}>
               {event.status as string}
             </span>

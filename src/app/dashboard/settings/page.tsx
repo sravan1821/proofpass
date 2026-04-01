@@ -2,6 +2,10 @@ import { requireApprovedOrganizer } from "@/lib/auth";
 import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { SettingsClient } from "./settings-client";
 
+function serialize<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
+
 export default async function SettingsPage() {
   const user = await requireApprovedOrganizer();
   const supabase = await createMongoServerClient();
@@ -12,5 +16,5 @@ export default async function SettingsPage() {
     .eq("id", user.id)
     .single();
 
-  return <SettingsClient profile={profile || null} />;
+  return <SettingsClient profile={serialize(profile || null)} />;
 }

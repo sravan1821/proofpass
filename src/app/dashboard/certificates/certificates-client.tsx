@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Fragment, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   Award,
   CalendarDays,
@@ -76,6 +76,10 @@ type PendingMailIntent =
   | { kind: "role-based-generate" }
   | { kind: "send-certificates"; certificateIds: string[] };
 
+type PendingRegenerateIntent =
+  | { kind: "bulk-generate"; existingCount: number }
+  | { kind: "role-based-generate"; existingCount: number };
+
 type SmtpFormState = {
   enabled: boolean;
   secure: boolean;
@@ -89,6 +93,18 @@ type SmtpFormState = {
   sendRegistrationEmails: boolean;
   sendCertificateEmails: boolean;
 };
+
+const BULK_SEND_EMAIL_PREFERENCE_KEY = "proofpass:bulk-send-certificates";
+const ROLE_SEND_EMAIL_PREFERENCE_KEY = "proofpass:role-send-certificates";
+
+function readSendEmailPreference(storageKey: string, fallback = false) {
+  if (typeof window === "undefined") return fallback;
+
+  const storedValue = window.localStorage.getItem(storageKey);
+  if (storedValue === "true") return true;
+  if (storedValue === "false") return false;
+  return fallback;
+}
 
 function createSmtpFormState(profile: Record<string, unknown> | null): SmtpFormState {
   return {
@@ -243,7 +259,7 @@ export function CertificatesClient({
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>(createDefaultEditorState());
-  const [sendEmail, setSendEmail] = useState(true);
+  const [sendEmail, setSendEmail] = useState(() => readSendEmailPreference(BULK_SEND_EMAIL_PREFERENCE_KEY, false));
   const [loading, setLoading] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [msg, setMsg] = useState("");
@@ -256,7 +272,7 @@ export function CertificatesClient({
   const [winnerTemplateId, setWinnerTemplateId] = useState(templates[0]?.id ?? "");
   const [runnerTemplateId, setRunnerTemplateId] = useState(templates[0]?.id ?? "");
   const [participantTemplateId, setParticipantTemplateId] = useState(templates[0]?.id ?? "");
-  const [sendEmailEvents, setSendEmailEvents] = useState(true);
+  const [sendEmailEvents, setSendEmailEvents] = useState(() => readSendEmailPreference(ROLE_SEND_EMAIL_PREFERENCE_KEY, false));
   const [issuingCerts, setIssuingCerts] = useState(false);
   const [showTemplatePanel, setShowTemplatePanel] = useState(false);
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
@@ -274,6 +290,7 @@ export function CertificatesClient({
   const [savingSmtp, setSavingSmtp] = useState(false);
   const [testingSmtp, setTestingSmtp] = useState(false);
   const [pendingMailIntent, setPendingMailIntent] = useState<PendingMailIntent | null>(null);
+  const [pendingRegenerateIntent, setPendingRegenerateIntent] = useState<PendingRegenerateIntent | null>(null);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) ?? templates[0],
@@ -377,6 +394,14 @@ export function CertificatesClient({
     draft: "badge-neutral",
   };
 
+  useEffect(() => {
+    window.localStorage.setItem(BULK_SEND_EMAIL_PREFERENCE_KEY, String(sendEmail));
+  }, [sendEmail]);
+
+  useEffect(() => {
+    window.localStorage.setItem(ROLE_SEND_EMAIL_PREFERENCE_KEY, String(sendEmailEvents));
+  }, [sendEmailEvents]);
+
   const customTemplateNeedsSetup =
     selectedTemplate?.source === "custom" && (!selectedTemplate.layout?.placements || selectedTemplate.layout.placements.length === 0);
 
@@ -455,16 +480,25 @@ export function CertificatesClient({
     setSavingTemplate(false);
   }
 
-  async function handleIssue() {
+  async function handleIssue(forceRegenerate = false) {
     if (!selectedEventId || !selectedTemplateId) return;
     setLoading(true);
     setMsg("");
 
-    const result = await issueCertificatesAction(selectedEventId, selectedTemplateId, sendEmail);
+    const result = await issueCertificatesAction(selectedEventId, selectedTemplateId, sendEmail, forceRegenerate);
+    if (result?.needsRegenerate) {
+      setLoading(false);
+      setPendingRegenerateIntent({
+        kind: "bulk-generate",
+        existingCount: result.existingCount ?? 0,
+      });
+      return;
+    }
+
     if (result?.error) {
       setMsg(result.error);
     } else {
-      setMsg(`Successfully generated ${result.count} certificate(s) in bulk.`);
+      setMsg(forceRegenerate ? `Successfully regenerated ${result.count} certificate(s) in bulk.` : `Successfully generated ${result.count} certificate(s) in bulk.`);
       router.refresh();
     }
 
@@ -492,7 +526,17 @@ export function CertificatesClient({
         winnerId,
         runnerId,
         sendEmailEvents,
+        false,
       );
+
+      if (result?.needsRegenerate) {
+        setIssuingCerts(false);
+        setPendingRegenerateIntent({
+          kind: "role-based-generate",
+          existingCount: result.existingCount ?? 0,
+        });
+        return;
+      }
 
       if (result?.error) {
         setMsg(result.error);
@@ -529,6 +573,49 @@ export function CertificatesClient({
     }
 
     await executePendingMailIntent(intent);
+  }
+
+  async function handleConfirmRegenerate() {
+    if (!pendingRegenerateIntent) return;
+
+    if (pendingRegenerateIntent.kind === "bulk-generate") {
+      setPendingRegenerateIntent(null);
+      await handleIssue(true);
+      return;
+    }
+
+    if (!overviewEventId) {
+      setPendingRegenerateIntent(null);
+      return;
+    }
+
+    setPendingRegenerateIntent(null);
+    setIssuingCerts(true);
+    setMsg("");
+
+    const regenerateResult = await issueCertificatesByCategoryAction(
+      overviewEventId,
+      {
+        winner: winnerTemplateId,
+        runner_up: runnerTemplateId,
+        participant: participantTemplateId,
+      },
+      winnerId,
+      runnerId,
+      sendEmailEvents,
+      true,
+    );
+
+    if (regenerateResult?.error) {
+      setMsg(regenerateResult.error);
+    } else {
+      setMsg(`Successfully regenerated ${regenerateResult.count} certificate(s) with role-based templates!`);
+      setOverviewEventId(null);
+      setShowTemplatePanel(false);
+      router.refresh();
+    }
+
+    setIssuingCerts(false);
   }
 
   function toggleCertificateSelection(certificateId: string) {
@@ -1997,6 +2084,37 @@ export function CertificatesClient({
               showPlacedFields={shouldShowPlacedFields(previewTemplate)}
               showTemplateMeta={!shouldShowPlacedFields(previewTemplate) && previewTemplate.source !== "custom"}
             />
+          </div>
+        </div>
+      ) : null}
+
+      {pendingRegenerateIntent ? (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(3, 8, 20, 0.74)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 86, padding: "24px" }} onClick={() => setPendingRegenerateIntent(null)}>
+          <div className="glass-card" style={{ width: "min(560px, 100%)", padding: "24px" }} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "16px" }}>
+              <div>
+                <h2 className="text-xl font-bold" style={{ marginBottom: "4px" }}>Regenerate Certificates?</h2>
+                <p style={{ color: "var(--muted-foreground)", margin: 0 }}>
+                  Certificates already exist for this event ({pendingRegenerateIntent.existingCount}). Regenerating will replace all existing certificates for this event.
+                </p>
+              </div>
+              <button type="button" onClick={() => setPendingRegenerateIntent(null)} style={{ width: "36px", height: "36px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--foreground)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: "14px 16px", borderRadius: "12px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#f59e0b", fontSize: "0.84rem", marginBottom: "18px" }}>
+              This will remove the current certificates for the selected event and create a new set.
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button type="button" className="btn-secondary" onClick={() => setPendingRegenerateIntent(null)}>
+                Cancel
+              </button>
+              <button type="button" className="btn-primary" onClick={() => void handleConfirmRegenerate()}>
+                Regenerate Certificates
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
