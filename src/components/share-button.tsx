@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { buildPublicUrl, isLocalhostLikeUrl } from "@/lib/public-url";
 
 function ShareIcon() {
   return (
@@ -101,11 +102,13 @@ export default function ShareButton({
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number; openAbove: boolean }>({ top: 0, left: 0, openAbove: true });
   const popoverRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const eventPath = `/events/${eventSlug}/register`;
 
   const shareUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/events/${eventSlug}/register`
-      : `/events/${eventSlug}/register`;
+      ? buildPublicUrl(eventPath, window.location.origin)
+      : buildPublicUrl(eventPath);
+  const shareUrlNeedsNetworkHint = isLocalhostLikeUrl(shareUrl);
 
   const shareText = [
     `🎯 ${eventName}`,
@@ -279,6 +282,20 @@ export default function ShareButton({
       >
         Share this event
       </p>
+
+      {shareUrlNeedsNetworkHint ? (
+        <p
+          style={{
+            fontSize: "0.74rem",
+            lineHeight: 1.5,
+            color: "var(--muted-foreground)",
+            padding: "0 10px 8px",
+            margin: 0,
+          }}
+        >
+          This link still points to localhost. Set `NEXT_PUBLIC_APP_URL` to your LAN IP to share it with other devices.
+        </p>
+      ) : null}
 
       {/* Copy Link */}
       <button

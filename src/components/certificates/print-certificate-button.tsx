@@ -1,9 +1,9 @@
 "use client";
 
-export function PrintCertificateButton() {
+export function PrintCertificateButton({ label = "Print / Save PDF" }: { label?: string }) {
   return (
     <button type="button" className="btn-primary" onClick={() => window.print()}>
-      Print / Save PDF
+      {label}
     </button>
   );
 }

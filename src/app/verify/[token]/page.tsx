@@ -2,6 +2,7 @@ import { createMongoServerClient } from "@/lib/db/mongo/server";
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
   Medal,
   ScanSearch,
   ScrollText,
@@ -31,6 +32,32 @@ type VerificationCertificate = {
   events?: VerificationEvent | null;
 };
 
+function formatEventDate(event: VerificationEvent | null) {
+  if (!event?.start_date) return "—";
+
+  const startDate = new Date(event.start_date);
+  if (Number.isNaN(startDate.getTime())) return "—";
+
+  const startLabel = startDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  if (!event.end_date || event.end_date === event.start_date) return startLabel;
+
+  const endDate = new Date(event.end_date);
+  if (Number.isNaN(endDate.getTime())) return startLabel;
+
+  const endLabel = endDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  return `${startLabel} - ${endLabel}`;
+}
+
 export default async function VerifyPage({
   params,
 }: {
@@ -43,7 +70,6 @@ export default async function VerifyPage({
   let event: VerificationEvent | null = null;
 
   if (supabase) {
-    // Try lookup by certificate_id_display (human-readable ID)
     const { data } = await supabase
       .from("certificates")
       .select("*, events(name, start_date, end_date, venue)")
@@ -54,7 +80,6 @@ export default async function VerifyPage({
       certificate = data as VerificationCertificate;
       event = certificate.events ?? null;
     } else {
-      // Fallback: try by token_hash
       const { data: byHash } = await supabase
         .from("certificates")
         .select("*, events(name, start_date, end_date, venue)")
@@ -67,7 +92,6 @@ export default async function VerifyPage({
       }
     }
 
-    // Log verification
     if (certificate) {
       await supabase.from("verification_logs").insert({
         certificate_id: certificate.id,
@@ -76,7 +100,10 @@ export default async function VerifyPage({
     }
   }
 
-  const statusConfig: Record<string, { bg: string; border: string; icon: ReactNode; color: string; title: string; message: string }> = {
+  const statusConfig: Record<
+    string,
+    { bg: string; border: string; icon: ReactNode; color: string; title: string; message: string }
+  > = {
     active: {
       bg: "rgba(16,185,129,0.08)",
       border: "rgba(16,185,129,0.25)",
@@ -112,8 +139,11 @@ export default async function VerifyPage({
     message: "No certificate found with this ID. Please verify the ID and try again.",
   };
 
-  const config = certificate ? (statusConfig[certificate.status as string] || notFoundConfig) : notFoundConfig;
+  const config = certificate ? statusConfig[certificate.status as string] || notFoundConfig : notFoundConfig;
   const achievementDetail = certificate?.achievement_detail?.trim();
+  const certificatePageHref = certificate
+    ? `/certificate/${encodeURIComponent(certificate.certificate_id_display || token)}`
+    : null;
 
   const categoryLabels: Record<string, string> = {
     winner: "Winner",
@@ -134,102 +164,227 @@ export default async function VerifyPage({
   };
 
   return (
-    <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 16px", background: "radial-gradient(circle at 50% 30%, rgba(79,70,229,0.12), transparent 40%), linear-gradient(180deg, #060816 0%, #070b17 42%, #091121 100%)" }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "32px 16px",
+        background:
+          "radial-gradient(circle at 50% 30%, rgba(79,70,229,0.12), transparent 40%), linear-gradient(180deg, #060816 0%, #070b17 42%, #091121 100%)",
+      }}
+    >
       <div className="w-full animate-fade-in" style={{ maxWidth: "560px" }}>
-        {/* ProofPass Brand */}
         <div className="text-center" style={{ marginBottom: "32px" }}>
           <div className="inline-flex items-center gap-3 mb-2">
-            <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "1.1rem" }}>P</div>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "12px",
+                background: "var(--primary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                fontWeight: 700,
+                fontSize: "1.1rem",
+              }}
+            >
+              P
+            </div>
             <span className="text-xl font-bold">ProofPass</span>
           </div>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>Certificate Verification Portal</p>
         </div>
 
-        {/* Status Banner */}
-        <div style={{
-          background: config.bg,
-          border: `2px solid ${config.border}`,
-          borderRadius: "16px",
-          padding: "24px",
-          textAlign: "center",
-          marginBottom: "24px",
-        }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px", color: config.color }}>{config.icon}</div>
-          <h2 style={{ fontSize: "1.3rem", fontWeight: 700, color: config.color, marginBottom: "6px" }}>{config.title}</h2>
+        <div
+          style={{
+            background: config.bg,
+            border: `2px solid ${config.border}`,
+            borderRadius: "16px",
+            padding: "24px",
+            textAlign: "center",
+            marginBottom: "24px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px", color: config.color }}>
+            {config.icon}
+          </div>
+          <h2 style={{ fontSize: "1.3rem", fontWeight: 700, color: config.color, marginBottom: "6px" }}>
+            {config.title}
+          </h2>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>{config.message}</p>
         </div>
 
-        {/* Certificate Details */}
         {certificate && (
           <div className="glass-card" style={{ padding: "28px", marginBottom: "24px" }}>
-            {/* Category Badge */}
             <div className="text-center" style={{ marginBottom: "20px" }}>
-              <span style={{
-                display: "inline-block",
-                padding: "6px 20px",
-                borderRadius: "20px",
-                fontSize: "0.85rem",
-                fontWeight: 700,
-                color: categoryColors[certificate.category as string] || "#4f46e5",
-                background: `${categoryColors[certificate.category as string] || "#4f46e5"}15`,
-                border: `1px solid ${categoryColors[certificate.category as string] || "#4f46e5"}30`,
-              }} className="inline-flex items-center gap-2">
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  padding: "7px 18px",
+                  borderRadius: "20px",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  color: categoryColors[certificate.category as string] || "#4f46e5",
+                  background: `${categoryColors[certificate.category as string] || "#4f46e5"}15`,
+                  border: `1px solid ${categoryColors[certificate.category as string] || "#4f46e5"}30`,
+                }}
+              >
                 {categoryIcons[certificate.category as string] ?? null}
                 {categoryLabels[certificate.category as string] || "Certificate"}
               </span>
             </div>
 
-            {/* Details Grid */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
               <div>
-                <p style={{ fontSize: "0.7rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Certificate ID</p>
-                <code style={{ fontSize: "0.95rem", color: "var(--primary-soft)", fontWeight: 600 }}>{certificate.certificate_id_display as string}</code>
+                <p
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "var(--muted-foreground)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Certificate ID
+                </p>
+                <code style={{ fontSize: "0.95rem", color: "var(--primary-soft)", fontWeight: 600 }}>
+                  {certificate.certificate_id_display as string}
+                </code>
               </div>
               <div>
-                <p style={{ fontSize: "0.7rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Recipient</p>
+                <p
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "var(--muted-foreground)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Recipient
+                </p>
                 <p style={{ fontWeight: 600 }}>{certificate.recipient_name as string}</p>
               </div>
               <div>
-                <p style={{ fontSize: "0.7rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Event</p>
+                <p
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "var(--muted-foreground)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Event
+                </p>
                 <p style={{ fontWeight: 500 }}>{(event?.name as string) || "—"}</p>
               </div>
               <div>
-                <p style={{ fontSize: "0.7rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Issuing Organization</p>
+                <p
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "var(--muted-foreground)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Issuing Organization
+                </p>
                 <p style={{ fontWeight: 500 }}>{(certificate.organization_name as string) || "—"}</p>
               </div>
               <div>
-                <p style={{ fontSize: "0.7rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Date of Issue</p>
-                <p style={{ fontWeight: 500 }}>{certificate.issued_at ? new Date(certificate.issued_at as string).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" }) : "—"}</p>
+                <p
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "var(--muted-foreground)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Date Of Issue
+                </p>
+                <p style={{ fontWeight: 500 }}>
+                  {certificate.issued_at
+                    ? new Date(certificate.issued_at as string).toLocaleDateString("en-IN", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : "—"}
+                </p>
               </div>
               {achievementDetail ? (
                 <div>
-                  <p style={{ fontSize: "0.7rem", color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Achievement</p>
+                  <p
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "var(--muted-foreground)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    Achievement
+                  </p>
                   <p style={{ fontWeight: 500 }}>{achievementDetail}</p>
                 </div>
               ) : null}
             </div>
 
-            {event && (
-              <div style={{ marginTop: "16px", padding: "14px", borderRadius: "10px", background: "rgba(79,70,229,0.05)", border: "1px solid rgba(79,70,229,0.1)" }}>
+            {event ? (
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "14px",
+                  borderRadius: "10px",
+                  background: "rgba(79,70,229,0.05)",
+                  border: "1px solid rgba(79,70,229,0.1)",
+                }}
+              >
                 <p style={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
-                  Event Date: {event.start_date ? new Date(event.start_date as string).toLocaleDateString() : "—"}
-                  {event.end_date && ` — ${new Date(event.end_date as string).toLocaleDateString()}`}
-                  {event.venue && ` • ${event.venue}`}
+                  Event Date: {formatEventDate(event)}
+                  {event.venue ? ` • ${event.venue}` : ""}
                 </p>
               </div>
-            )}
+            ) : null}
+
+            {certificatePageHref ? (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: "18px" }}>
+                <Link href={certificatePageHref} className="btn-primary" style={{ padding: "12px 20px" }}>
+                  <Download size={16} />
+                  View / Download Certificate
+                </Link>
+              </div>
+            ) : null}
           </div>
         )}
 
-        {/* Verify Another */}
         <div className="glass-card" style={{ padding: "20px" }}>
           <form action="/verify" method="GET" style={{ display: "flex", gap: "8px" }}>
-            <input name="q" type="text" className="input-field" placeholder="Enter Certificate ID (e.g., PP-2026-TF-00001)" style={{ flex: 1 }} />
-            <button type="submit" className="btn-primary" style={{ padding: "12px 20px" }}>Verify</button>
+            <input
+              name="q"
+              type="text"
+              className="input-field"
+              placeholder="Enter Certificate ID (e.g., PP-2026-TF-00001)"
+              style={{ flex: 1 }}
+            />
+            <button type="submit" className="btn-primary" style={{ padding: "12px 20px" }}>
+              Verify
+            </button>
           </form>
         </div>
 
-        {/* QR Scanner */}
         <div className="glass-card" style={{ padding: "20px", marginTop: "16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
             <ScanSearch size={18} style={{ color: "var(--primary-soft)" }} />
@@ -243,10 +398,9 @@ export default async function VerifyPage({
           <QrScanner />
         </div>
 
-        {/* Footer */}
         <div className="text-center" style={{ marginTop: "24px" }}>
           <Link href="/" style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
-            proofpass.in — Verified Event Credentials
+            proofpass.in - Verified Event Credentials
           </Link>
         </div>
       </div>

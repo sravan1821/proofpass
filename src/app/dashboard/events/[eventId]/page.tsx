@@ -3,6 +3,10 @@ import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { notFound } from "next/navigation";
 import { EventDetailClient } from "./event-detail";
 
+function serialize<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
+
 export default async function EventDetailPage({
   params,
 }: {
@@ -33,5 +37,11 @@ export default async function EventDetailPage({
     .eq("event_id", eventId)
     .order("created_at", { ascending: false });
 
-  return <EventDetailClient event={event} participants={participants || []} registrations={registrations || []} />;
+  return (
+    <EventDetailClient
+      event={serialize(event)}
+      participants={serialize(participants || [])}
+      registrations={serialize(registrations || [])}
+    />
+  );
 }
