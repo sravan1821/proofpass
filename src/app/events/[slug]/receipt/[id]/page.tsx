@@ -1,5 +1,6 @@
 import { EventRecord, EventRegistrationRecord } from "@/app/events/types";
 import { createSupabaseServerClient } from "@/lib/db/supabase/server";
+import { buildPublicUrl } from "@/lib/public-url";
 import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -34,6 +35,7 @@ export default async function ReceiptPage({
   const typedRegistration = registration as EventRegistrationRecord;
   const organizer = typedEvent.profiles;
   const advantages = typedEvent.advantages || [];
+  const receiptUrl = buildPublicUrl(`/events/${typedEvent.slug}/receipt/${typedRegistration.id}`);
 
   return (
     <div style={{ minHeight: "100vh" }}>
@@ -159,7 +161,12 @@ export default async function ReceiptPage({
           </div>
         </div>
 
-        <ReceiptActions />
+        <ReceiptActions
+          recipientEmail={typedRegistration.email}
+          eventName={typedEvent.name}
+          receiptUrl={receiptUrl}
+          receiptNumber={typedRegistration.receipt_number}
+        />
       </div>
     </div>
   );

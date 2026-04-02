@@ -12,6 +12,7 @@ import {
   parseTemplateLayout,
   type CertificateTemplateLayout,
 } from "@/lib/certificates/fields";
+import { generateCertificatePdf } from "@/lib/certificates/pdf";
 import { mapCustomCertificateTemplate, CERTIFICATE_TEMPLATES, type CertificateTemplate } from "@/lib/certificates/templates";
 import { createMongoServerClient } from "@/lib/db/mongo/server";
 import { getAppBaseUrl, getOrganizerSmtpSettings, sendOrganizerEmail } from "@/lib/mail/organizer-mail";
@@ -74,12 +75,29 @@ type CertificateEmailRow = {
   organization_name?: string | null;
   verification_url?: string | null;
   issued_at?: string | null;
+  template_snapshot_json?: unknown;
+  template_id?: string | null;
+  template_source?: string | null;
+  field_values_json?: unknown;
+  qr_code_data?: string | null;
+  recipient_phone?: string | null;
+  recipient_organization?: string | null;
 };
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
 async function sendCertificateDeliveryEmail(params: {
   organizerId: string;
   certificate: CertificateEmailRow;
   eventName?: string | null;
+  event?: Record<string, unknown> | null;
 }) {
   const certificateId = String(params.certificate.certificate_id_display || "Certificate");
   const recipientName = String(params.certificate.recipient_name || "Participant");
@@ -94,6 +112,17 @@ async function sendCertificateDeliveryEmail(params: {
   const verificationUrl =
     params.certificate.verification_url ||
     `${getAppBaseUrl()}/verify/${encodeURIComponent(certificateId)}`;
+  const generatedPdf = await generateCertificatePdf({
+    certificate: params.certificate as never,
+    event: params.event ?? null,
+    organizationName: String(params.certificate.organization_name || "ProofPass"),
+  });
+  const categoryAccent =
+    params.certificate.category === "winner"
+      ? "#f59e0b"
+      : params.certificate.category === "runner_up"
+        ? "#cbd5e1"
+        : "#5873ff";
 
   if (!recipientEmail) {
     return { sent: false, skipped: true, reason: "missing-email" as const };
@@ -103,24 +132,102 @@ async function sendCertificateDeliveryEmail(params: {
     organizerId: params.organizerId,
     to: recipientEmail,
     subject: `Your ${categoryLabel} certificate for ${eventName}`,
-    text: `Hi ${recipientName}, your certificate has been issued.\nCertificate ID: ${certificateId}\nView and verify it here: ${verificationUrl}`,
+    text: `Hi ${recipientName}, your ${categoryLabel} certificate for ${eventName} is ready.\nCertificate ID: ${certificateId}\nView and verify it here: ${verificationUrl}\nA PDF certificate file is attached to this email.`,
     html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827; max-width: 640px; margin: 0 auto;">
-        <div style="padding: 24px; border-radius: 18px; border: 1px solid rgba(88,115,255,0.16); background: #f8fbff;">
-          <div style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #5873ff; font-weight: 700; margin-bottom: 10px;">ProofPass Certificate Delivery</div>
-          <h2 style="margin: 0 0 12px; font-size: 24px; color: #0f172a;">Your certificate is ready</h2>
-          <p style="margin: 0 0 12px;">Hi ${recipientName},</p>
-          <p style="margin: 0 0 12px;">Your <strong>${categoryLabel}</strong> certificate for <strong>${eventName}</strong> has been issued.</p>
-          <div style="padding: 14px 16px; border-radius: 14px; background: #ffffff; border: 1px solid rgba(15,23,42,0.08); margin: 18px 0;">
-            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 6px;">Certificate ID</div>
-            <div style="font-size: 18px; font-weight: 700; color: #1d4ed8;">${certificateId}</div>
-            <div style="font-size: 14px; color: #475569; margin-top: 8px;">Issued by ${String(params.certificate.organization_name || "ProofPass")}</div>
-          </div>
-          <a href="${verificationUrl}" style="display: inline-block; padding: 12px 20px; border-radius: 999px; background: #5873ff; color: #ffffff; text-decoration: none; font-weight: 700;">Open Certificate</a>
-          <p style="margin: 16px 0 0; font-size: 13px; color: #64748b;">This delivery includes the public verification link so the certificate can be viewed and verified from any device.</p>
-        </div>
+      <div style="margin:0;padding:0;background:#0a1020;font-family:Segoe UI,Arial,sans-serif;color:#e7edf8;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#0a1020;background-image:radial-gradient(circle at top, rgba(88,115,255,0.14), transparent 34%);">
+          <tr>
+            <td align="center" style="padding:28px 14px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:680px;">
+                <tr>
+                  <td align="center" style="padding:0 0 18px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="width:46px;height:46px;border-radius:16px;background:#5d6df7;color:#ffffff;font-weight:800;font-size:24px;line-height:46px;text-align:center;">P</td>
+                        <td style="padding-left:12px;text-align:left;">
+                          <div style="font-size:28px;font-weight:800;line-height:1;color:#ffffff;">ProofPass</div>
+                          <div style="margin-top:6px;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#8fdcff;">Credential Delivery</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="border-radius:28px;overflow:hidden;border:1px solid rgba(132,153,255,0.16);background:#101629;box-shadow:0 28px 90px rgba(0,0,0,0.4);">
+                    <div style="height:6px;background:${categoryAccent};"></div>
+
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+                      <tr>
+                        <td style="padding:28px 28px 18px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                          <div style="font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:#8fdcff;margin-bottom:12px;">Certificate Ready</div>
+                          <div style="display:inline-block;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);font-size:12px;font-weight:800;letter-spacing:0.06em;color:${categoryAccent};margin-bottom:16px;">
+                            ${escapeHtml(categoryLabel)}
+                          </div>
+                          <h1 style="margin:0 0 14px;font-size:34px;line-height:1.08;font-weight:800;color:#ffffff;">Your certificate is ready</h1>
+                          <p style="margin:0;font-size:16px;line-height:1.7;color:#b8c4dc;">
+                            Hi ${escapeHtml(recipientName)}, your <strong style="color:#ffffff;">${escapeHtml(categoryLabel)}</strong> certificate for
+                            <strong style="color:#ffffff;"> ${escapeHtml(eventName)}</strong> has been issued. Your final personalized PDF is attached and the credential can also be verified online.
+                          </p>
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td style="padding:22px 28px 8px;">
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+                            <tr>
+                              <td style="padding:0 0 14px;">
+                                <div style="padding:18px 20px;border-radius:20px;background:#1a2140;border:1px solid rgba(88,115,255,0.16);">
+                                  <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;color:#8fdcff;margin-bottom:10px;">Certificate ID</div>
+                                  <div style="font-size:18px;line-height:1.35;font-weight:800;color:#ffffff;word-break:break-word;">${escapeHtml(certificateId)}</div>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding:0 0 14px;">
+                                <div style="padding:18px 20px;border-radius:20px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                                  <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.16em;color:#8fdcff;margin-bottom:10px;">Issued By</div>
+                                  <div style="font-size:18px;line-height:1.4;font-weight:700;color:#ffffff;word-break:break-word;">${escapeHtml(String(params.certificate.organization_name || "ProofPass"))}</div>
+                                </div>
+                              </td>
+                            </tr>
+                          </table>
+
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td align="center" style="padding:0 28px 20px;">
+                          <a href="${verificationUrl}" style="display:inline-block;padding:14px 26px;border-radius:999px;background:#5d6df7;color:#ffffff;text-decoration:none;font-size:15px;font-weight:800;">
+                            Open And Verify Certificate
+                          </a>
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td style="padding:0 28px 24px;">
+                          <div style="padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);font-size:13px;line-height:1.8;color:#90a0bf;text-align:center;">
+                            Your final certificate PDF is attached to this email.
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </div>
     `,
+    attachments: [
+      {
+        filename: generatedPdf.filename,
+        content: generatedPdf.buffer,
+        contentType: "application/pdf",
+        disposition: "attachment",
+      },
+    ],
   });
 
   return { sent: true, skipped: false };
@@ -267,7 +374,7 @@ export async function upsertCustomCertificateTemplateAction(formData: FormData) 
   return { success: true };
 }
 
-export async function issueCertificatesAction(eventId: string, templateId: string, sendEmail = false) {
+export async function issueCertificatesAction(eventId: string, templateId: string, sendEmail = false, forceRegenerate = false) {
   const user = await requireApprovedOrganizer();
   const supabase = await createMongoServerClient();
   if (!supabase) return { error: "Service unavailable" };
@@ -354,15 +461,32 @@ export async function issueCertificatesAction(eventId: string, templateId: strin
     .eq("event_id", eventId);
 
   const existingCertificates = (existingCerts as Array<Record<string, unknown>> | null) ?? [];
-  const existingRegistrationIds = new Set(existingCertificates.map((item) => String(item.registration_id || "")).filter(Boolean));
-  const existingEmails = new Set(existingCertificates.map((item) => normalizeEmail(item.recipient_email)).filter(Boolean));
-  const existingNames = new Set(existingCertificates.map((item) => normalizeName(item.recipient_name)).filter(Boolean));
+  if (existingCertificates.length > 0 && !forceRegenerate) {
+    return {
+      error: "Certificates already exist for this event.",
+      needsRegenerate: true,
+      existingCount: existingCertificates.length,
+    };
+  }
 
-  let seqNum = existingCertificates.length + 1;
+  if (existingCertificates.length > 0 && forceRegenerate) {
+    const { error: deleteError } = await supabase
+      .from("certificates")
+      .delete()
+      .eq("event_id", eventId)
+      .eq("organizer_id", user.id);
+
+    if (deleteError) return { error: deleteError.message };
+  }
+
+  const dedupeCertificates = forceRegenerate ? [] : existingCertificates;
+  const existingRegistrationIds = new Set(dedupeCertificates.map((item) => String(item.registration_id || "")).filter(Boolean));
+  const existingEmails = new Set(dedupeCertificates.map((item) => normalizeEmail(item.recipient_email)).filter(Boolean));
+  const existingNames = new Set(dedupeCertificates.map((item) => normalizeName(item.recipient_name)).filter(Boolean));
+
+  let seqNum = dedupeCertificates.length + 1;
 
   const certificatesToInsert: Array<Record<string, unknown>> = [];
-  const certificateEmailQueue: Array<{ to: string; name: string; verifyUrl: string; eventName: string; certId: string }> = [];
-
   for (const registration of recipients) {
     const registrationId = String(registration.id || "");
     const email = normalizeEmail(registration.email);
@@ -449,16 +573,6 @@ export async function issueCertificatesAction(eventId: string, templateId: strin
       issued_at: issuedAt,
     });
 
-    if (email) {
-      certificateEmailQueue.push({
-        to: email,
-        name: String(registration.full_name || "Participant"),
-        verifyUrl: verificationUrl,
-        eventName: String(event.name || "your event"),
-        certId: certIdDisplay,
-      });
-    }
-
     if (registrationId) existingRegistrationIds.add(registrationId);
     if (email) existingEmails.add(email);
     if (fullName) existingNames.add(fullName);
@@ -474,21 +588,12 @@ export async function issueCertificatesAction(eventId: string, templateId: strin
 
   const organizerSmtp = await getOrganizerSmtpSettings(user.id);
   if (sendEmail && organizerSmtp) {
-    for (const item of certificateEmailQueue) {
-      await sendOrganizerEmail({
+    for (const certificate of certificatesToInsert) {
+      await sendCertificateDeliveryEmail({
         organizerId: user.id,
-        to: item.to,
-        subject: `Your certificate for ${item.eventName}`,
-        text: `Hi ${item.name}, your certificate has been issued. Verify it here: ${item.verifyUrl}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-            <h2>Your certificate is ready</h2>
-            <p>Hi ${item.name},</p>
-            <p>Your certificate for <strong>${item.eventName}</strong> has been issued.</p>
-            <p>Certificate ID: <strong>${item.certId}</strong></p>
-            <p><a href="${item.verifyUrl}">Open verification page</a></p>
-          </div>
-        `,
+        certificate: certificate as CertificateEmailRow,
+        eventName: String(event.name || "your event"),
+        event,
       }).catch(() => null);
     }
   }
@@ -504,6 +609,7 @@ export async function issueCertificatesByCategoryAction(
   winnerId: string | null,
   runnerId: string | null,
   sendEmail = false,
+  forceRegenerate = false,
 ) {
   const user = await requireApprovedOrganizer();
   const supabase = await createMongoServerClient();
@@ -599,11 +705,30 @@ export async function issueCertificatesByCategoryAction(
     .eq("event_id", eventId);
 
   const existingCertificates = (existingCerts as Array<Record<string, unknown>> | null) ?? [];
-  const existingRegistrationIds = new Set(existingCertificates.map((item) => String(item.registration_id || "")).filter(Boolean));
-  const existingEmails = new Set(existingCertificates.map((item) => normalizeEmail(item.recipient_email)).filter(Boolean));
-  const existingNames = new Set(existingCertificates.map((item) => normalizeName(item.recipient_name)).filter(Boolean));
+  if (existingCertificates.length > 0 && !forceRegenerate) {
+    return {
+      error: "Certificates already exist for this event.",
+      needsRegenerate: true,
+      existingCount: existingCertificates.length,
+    };
+  }
 
-  let seqNum = existingCertificates.length + 1;
+  if (existingCertificates.length > 0 && forceRegenerate) {
+    const { error: deleteError } = await supabase
+      .from("certificates")
+      .delete()
+      .eq("event_id", eventId)
+      .eq("organizer_id", user.id);
+
+    if (deleteError) return { error: deleteError.message };
+  }
+
+  const dedupeCertificates = forceRegenerate ? [] : existingCertificates;
+  const existingRegistrationIds = new Set(dedupeCertificates.map((item) => String(item.registration_id || "")).filter(Boolean));
+  const existingEmails = new Set(dedupeCertificates.map((item) => normalizeEmail(item.recipient_email)).filter(Boolean));
+  const existingNames = new Set(dedupeCertificates.map((item) => normalizeName(item.recipient_name)).filter(Boolean));
+
+  let seqNum = dedupeCertificates.length + 1;
   const year = new Date().getFullYear();
   const eventCode =
     String(event.event_code || "").trim() ||
@@ -614,8 +739,6 @@ export async function issueCertificatesByCategoryAction(
     "EV";
 
   const certificatesToInsert: Array<Record<string, unknown>> = [];
-  const certificateEmailQueue: Array<{ to: string; name: string; verifyUrl: string; eventName: string; certId: string; category: string }> = [];
-
   // 6. Generate certificates with per-category templates
   for (const registration of registrations) {
     const registrationId = String(registration.id || "");
@@ -704,17 +827,6 @@ export async function issueCertificatesByCategoryAction(
       issued_at: issuedAt,
     });
 
-    if (email) {
-      certificateEmailQueue.push({
-        to: email,
-        name: String(registration.full_name || "Participant"),
-        verifyUrl: verificationUrl,
-        eventName: String(event.name || "your event"),
-        certId: certIdDisplay,
-        category,
-      });
-    }
-
     if (registrationId) existingRegistrationIds.add(registrationId);
     if (email) existingEmails.add(email);
     if (fullName) existingNames.add(fullName);
@@ -732,28 +844,12 @@ export async function issueCertificatesByCategoryAction(
   // 8. Send emails
   const organizerSmtp = await getOrganizerSmtpSettings(user.id);
   if (sendEmail && organizerSmtp) {
-    for (const item of certificateEmailQueue) {
-      const categoryLabel =
-        item.category === "winner"
-          ? "🏆 Winner"
-          : item.category === "runner_up"
-            ? "🥈 Runner-Up"
-            : "📜 Participant";
-
-      await sendOrganizerEmail({
+    for (const certificate of certificatesToInsert) {
+      await sendCertificateDeliveryEmail({
         organizerId: user.id,
-        to: item.to,
-        subject: `Your ${categoryLabel} Certificate for ${item.eventName}`,
-        text: `Hi ${item.name}, your ${categoryLabel} certificate for ${item.eventName} has been issued. Verify it here: ${item.verifyUrl}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-            <h2>Your certificate is ready</h2>
-            <p>Hi ${item.name},</p>
-            <p>Congratulations! You have been awarded a <strong>${categoryLabel}</strong> certificate for <strong>${item.eventName}</strong>.</p>
-            <p>Certificate ID: <strong>${item.certId}</strong></p>
-            <p><a href="${item.verifyUrl}" style="display:inline-block;padding:12px 24px;background:#5873ff;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">View & Verify Certificate</a></p>
-          </div>
-        `,
+        certificate: certificate as CertificateEmailRow,
+        eventName: String(event.name || "your event"),
+        event,
       }).catch(() => null);
     }
   }
@@ -801,11 +897,11 @@ export async function sendIssuedCertificatesAction(certificateIds: string[]) {
 
   const { data } = await supabase
     .from("certificates")
-    .select("id, organizer_id, event_id, certificate_id_display, recipient_name, recipient_email, category, achievement_detail, organization_name, verification_url, issued_at, events(name)")
+    .select("id, organizer_id, event_id, certificate_id_display, recipient_name, recipient_email, recipient_phone, recipient_organization, category, achievement_detail, organization_name, verification_url, issued_at, template_id, template_source, template_snapshot_json, field_values_json, qr_code_data, events(name, start_date, end_date, venue)")
     .eq("organizer_id", user.id)
     .in("id", uniqueCertificateIds);
 
-  const certificates = (data as Array<CertificateEmailRow & { events?: { name?: string | null } | null }> | null) ?? [];
+  const certificates = (data as Array<CertificateEmailRow & { events?: Record<string, unknown> | null }> | null) ?? [];
   if (certificates.length === 0) {
     return { error: "No matching certificates were found." };
   }
@@ -818,7 +914,8 @@ export async function sendIssuedCertificatesAction(certificateIds: string[]) {
       const result = await sendCertificateDeliveryEmail({
         organizerId: user.id,
         certificate,
-        eventName: certificate.events?.name ?? null,
+        eventName: String(certificate.events?.name || ""),
+        event: certificate.events ?? null,
       });
 
       if (result.sent) {
