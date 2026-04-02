@@ -1908,7 +1908,7 @@ export function CertificatesClient({
                                     target="_blank"
                                     style={{
                                       display: "inline-flex", alignItems: "center", gap: "6px",
-                                      padding: "7px 14px", borderRadius: "10px", border: "none",
+                                      padding: "7px 14px", borderRadius: "10px",
                                       background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06))",
                                       color: "#10b981", fontSize: "0.78rem", fontWeight: 600,
                                       cursor: "pointer", textDecoration: "none",
