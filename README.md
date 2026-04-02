@@ -11,45 +11,37 @@ The current repo includes:
 - Public project portfolio page
 - Blueprint-aligned `lib`, `types`, MongoDB-backed data access, and API route scaffolding
 
-## Run Locally
-
-```bash
-npm run dev
-```
-
-Open `http://localhost:3000`.
-
-## Demo Routes
-
-- `/`
-- `/dashboard`
-- `/dashboard/certificates/new`
-- `/verify/active-demo-token`
-- `/verify/revoked-demo-token`
-- `/verify/not-found-demo-token`
-- `/project/proofpass`
-
 ## Environment Variables
 
-Copy `.env.example` to `.env.local` and fill in the MongoDB values.
+Use `.env.example` as the reference file for required production values.
 
-## Test Credentials
+- `APP_URL` must be the public HTTPS URL of the deployed app.
+- `AUTH_SECRET` must be a strong random secret.
+- `MONGODB_URI` should point to your production MongoDB instance or the `mongo` service from `docker-compose.yml`.
+- `MONGODB_DB` is optional if the database name is already included in `MONGODB_URI`.
 
-To create local test login accounts in MongoDB:
+## Deploy with Docker
+
+Build and run with Docker Compose:
 
 ```bash
-npm run seed:test-users
+cp .env.example .env
+docker compose up -d --build
 ```
 
-This script requires:
+The repo now includes:
 
-- `MONGODB_URI`
-- `AUTH_SECRET`
+- `Dockerfile` for a production Next.js standalone image
+- `docker-compose.yml` with app + MongoDB services
+- `.dockerignore` for smaller builds
 
-Default seeded credentials:
+## Coolify
 
-- Admin: `admin@proofpass.local` / `ProofPass123!`
-- Organizer: `organizer@proofpass.local` / `ProofPass123!`
+For Coolify self-hosting:
+
+- Use the included `Dockerfile` or `docker-compose.yml`
+- Set the same environment variables from `.env.example` in the Coolify UI
+- Put a reverse proxy and TLS in front of the app, and set `APP_URL` to that public domain
 
 ## Current Scope
 

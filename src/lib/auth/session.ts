@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
+import { requireEnv } from "@/lib/env";
 
 const SESSION_COOKIE = "proofpass_session";
 
 function getSessionSecret() {
-  return new TextEncoder().encode(process.env.AUTH_SECRET || "proofpass-dev-secret");
+  return new TextEncoder().encode(requireEnv("AUTH_SECRET"));
 }
 
 export async function createUserSession(user: { id: string; email: string }) {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Inter } from "next/font/google";
+import { connection } from "next/server";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -20,11 +21,13 @@ export const metadata: Metadata = {
   description: "Verified talent passport rebuilt from the ProofPass v2 blueprint.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await connection();
+
   return (
     <html
       lang="en"

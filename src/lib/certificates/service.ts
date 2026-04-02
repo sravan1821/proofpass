@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { getAppUrl } from "@/lib/env";
 
 export function generateSerialNumber(prefix = "PP") {
   const stamp = new Date().toISOString().slice(2, 10).replaceAll("-", "");
@@ -15,6 +16,5 @@ export function hashCertificateToken(token: string) {
 }
 
 export function buildVerificationUrl(token: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return `${baseUrl}/verify/${token}`;
+  return `${getAppUrl()}/verify/${token}`;
 }

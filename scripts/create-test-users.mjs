@@ -1,49 +1,31 @@
-import fs from "node:fs";
-import path from "node:path";
 import crypto from "node:crypto";
 import { MongoClient } from "mongodb";
 import { hash } from "bcryptjs";
+import { loadEnvConfig } from "@next/env";
 
-function loadLocalEnv() {
-  const envPath = path.join(process.cwd(), ".env.local");
-  if (!fs.existsSync(envPath)) return;
-
-  const content = fs.readFileSync(envPath, "utf8");
-  for (const rawLine of content.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-
-    const separatorIndex = line.indexOf("=");
-    if (separatorIndex === -1) continue;
-
-    const key = line.slice(0, separatorIndex).trim();
-    const value = line.slice(separatorIndex + 1).trim();
-
-    if (!process.env[key]) {
-      process.env[key] = value;
-    }
-  }
-}
-
-loadLocalEnv();
+loadEnvConfig(process.cwd());
 
 const mongoUri = process.env.MONGODB_URI;
 const databaseName = process.env.MONGODB_DB || "proofpass";
 
 const missingVars = [
   !mongoUri ? "MONGODB_URI" : null,
+  !process.env.TEST_ADMIN_EMAIL ? "TEST_ADMIN_EMAIL" : null,
+  !process.env.TEST_ADMIN_PASSWORD ? "TEST_ADMIN_PASSWORD" : null,
+  !process.env.TEST_ORGANIZER_EMAIL ? "TEST_ORGANIZER_EMAIL" : null,
+  !process.env.TEST_ORGANIZER_PASSWORD ? "TEST_ORGANIZER_PASSWORD" : null,
 ].filter(Boolean);
 
 if (missingVars.length > 0) {
   console.error(`Missing ${missingVars.join(", ")}.`);
-  console.error("Add them to .env.local or export them in your shell before running this script.");
+  console.error("Add them to your environment or a local .env file before running this script.");
   process.exit(1);
 }
 
 const testUsers = [
   {
-    email: process.env.TEST_ADMIN_EMAIL ?? "admin@proofpass.local",
-    password: process.env.TEST_ADMIN_PASSWORD ?? "ProofPass123!",
+    email: process.env.TEST_ADMIN_EMAIL,
+    password: process.env.TEST_ADMIN_PASSWORD,
     profile: {
       full_name: "ProofPass Admin",
       role: "super_admin",
@@ -57,8 +39,8 @@ const testUsers = [
     },
   },
   {
-    email: process.env.TEST_ORGANIZER_EMAIL ?? "organizer@proofpass.local",
-    password: process.env.TEST_ORGANIZER_PASSWORD ?? "ProofPass123!",
+    email: process.env.TEST_ORGANIZER_EMAIL,
+    password: process.env.TEST_ORGANIZER_PASSWORD,
     profile: {
       full_name: "Demo Organizer",
       role: "organizer",

@@ -24,7 +24,6 @@ function ForgotPasswordContent() {
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [resetUrl, setResetUrl] = useState("");
 
   useEffect(() => {
     setStep(initialStep);
@@ -46,7 +45,6 @@ function ForgotPasswordContent() {
       return;
     }
 
-    setResetUrl(result?.resetUrl || "");
     setStep("sent");
     setLoading(false);
   }
@@ -109,14 +107,6 @@ function ForgotPasswordContent() {
               <p style={{ color: "var(--muted-foreground)", lineHeight: 1.7 }}>
                 We&apos;ve sent a password reset link to <strong style={{ color: "var(--foreground)" }}>{email}</strong>. Please check your inbox.
               </p>
-              {resetUrl ? (
-                <p style={{ marginTop: "16px", color: "var(--warning)", fontSize: "0.85rem", lineHeight: 1.6 }}>
-                  Development reset link:{" "}
-                  <a href={resetUrl} style={{ color: "var(--primary-soft)", textDecoration: "underline" }}>
-                    {resetUrl}
-                  </a>
-                </p>
-              ) : null}
             </div>
           )}
 
