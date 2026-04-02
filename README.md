@@ -35,6 +35,8 @@ The repo now includes:
 - `docker-compose.yml` with app + MongoDB services
 - `.dockerignore` for smaller builds
 
+For Coolify, do not publish the app with a host `ports:` mapping in Compose. Coolify handles the external routing itself.
+
 ## Coolify
 
 For Coolify self-hosting:

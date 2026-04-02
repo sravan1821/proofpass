@@ -17,8 +17,8 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    ports:
-      - "${PORT:-3000}:3000"
+    expose:
+      - "3000"
 
   mongo:
     image: mongo:8
