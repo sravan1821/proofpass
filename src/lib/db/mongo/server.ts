@@ -381,7 +381,12 @@ class MongoClientFacade {
 }
 
 export async function createMongoServerClient(): Promise<any> {
-  const db = await getMongoDb();
-  if (!db) return null;
-  return new MongoClientFacade();
+  try {
+    const db = await getMongoDb();
+    if (!db) return null;
+    return new MongoClientFacade();
+  } catch (error) {
+    console.error("Failed to initialize Mongo server client.", error);
+    return null;
+  }
 }
