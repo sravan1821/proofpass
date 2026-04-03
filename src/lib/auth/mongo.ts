@@ -59,9 +59,10 @@ export async function ensureBootstrapAdmin() {
       const passwordHash = await hash(bootstrapPassword, 12);
 
       let user = await authUsers.findOne({ email: bootstrapEmail });
+      let authUserId: string;
 
       if (!user) {
-        user = {
+        const newUser: OptionalId<AuthUser> = {
           id: randomUUID(),
           email: bootstrapEmail,
           password_hash: passwordHash,
@@ -69,7 +70,8 @@ export async function ensureBootstrapAdmin() {
           updated_at: now,
         };
 
-        await authUsers.insertOne(user);
+        await authUsers.insertOne(newUser);
+        authUserId = newUser.id;
       } else {
         await authUsers.updateOne(
           { id: user.id },
@@ -80,10 +82,11 @@ export async function ensureBootstrapAdmin() {
             },
           },
         );
+        authUserId = user.id;
       }
 
       const profilePayload = {
-        auth_user_id: user.id,
+        auth_user_id: authUserId,
         email: bootstrapEmail,
         full_name: process.env.BOOTSTRAP_ADMIN_FULL_NAME?.trim() || "ProofPass Admin",
         role: "super_admin",
@@ -98,7 +101,7 @@ export async function ensureBootstrapAdmin() {
       };
 
       const existingProfile = await profiles.findOne({
-        $or: [{ auth_user_id: user.id }, { email: bootstrapEmail }],
+        $or: [{ auth_user_id: authUserId }, { email: bootstrapEmail }],
       });
 
       if (existingProfile) {
