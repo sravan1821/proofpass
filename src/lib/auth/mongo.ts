@@ -56,6 +56,7 @@ export async function ensureBootstrapAdmin() {
       const authUsers = db.collection<AuthUser>("auth_users");
       const profiles = db.collection("profiles");
       const now = new Date().toISOString();
+      const passwordHash = await hash(bootstrapPassword, 12);
 
       let user = await authUsers.findOne({ email: bootstrapEmail });
 
@@ -63,31 +64,55 @@ export async function ensureBootstrapAdmin() {
         user = {
           id: randomUUID(),
           email: bootstrapEmail,
-          password_hash: await hash(bootstrapPassword, 12),
+          password_hash: passwordHash,
           created_at: now,
           updated_at: now,
         };
 
         await authUsers.insertOne(user);
+      } else {
+        await authUsers.updateOne(
+          { id: user.id },
+          {
+            $set: {
+              password_hash: passwordHash,
+              updated_at: now,
+            },
+          },
+        );
       }
 
-      const existingProfile = await profiles.findOne({ auth_user_id: user.id });
-      if (!existingProfile) {
+      const profilePayload = {
+        auth_user_id: user.id,
+        email: bootstrapEmail,
+        full_name: process.env.BOOTSTRAP_ADMIN_FULL_NAME?.trim() || "ProofPass Admin",
+        role: "super_admin",
+        approval_status: "approved",
+        org_name: "ProofPass",
+        org_type: "Corporate",
+        city: "Hyderabad",
+        state: "Telangana",
+        country: "India",
+        purpose: "Platform administration and organizer review",
+        updated_at: now,
+      };
+
+      const existingProfile = await profiles.findOne({
+        $or: [{ auth_user_id: user.id }, { email: bootstrapEmail }],
+      });
+
+      if (existingProfile) {
+        await profiles.updateOne(
+          { id: existingProfile.id },
+          {
+            $set: profilePayload,
+          },
+        );
+      } else {
         await profiles.insertOne({
           id: randomUUID(),
-          auth_user_id: user.id,
-          email: bootstrapEmail,
-          full_name: process.env.BOOTSTRAP_ADMIN_FULL_NAME?.trim() || "ProofPass Admin",
-          role: "super_admin",
-          approval_status: "approved",
-          org_name: "ProofPass",
-          org_type: "Corporate",
-          city: "Hyderabad",
-          state: "Telangana",
-          country: "India",
-          purpose: "Platform administration and organizer review",
           created_at: now,
-          updated_at: now,
+          ...profilePayload,
         });
       }
     })();
@@ -113,8 +138,12 @@ export async function findAuthUserById(id: string) {
 }
 
 export async function verifyPassword(email: string, password: string) {
-  await ensureBootstrapAdmin();
-  const user = await findAuthUserByEmail(email);
+  const normalizedEmail = email.toLowerCase();
+  if (normalizedEmail === process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase()) {
+    await ensureBootstrapAdmin();
+  }
+
+  const user = await findAuthUserByEmail(normalizedEmail);
   if (!user) return null;
 
   const matches = await compare(password, user.password_hash);
