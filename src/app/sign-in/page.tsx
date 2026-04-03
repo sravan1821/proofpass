@@ -29,11 +29,16 @@ function SignInContent() {
     setError("");
     setLoading(true);
 
-    const formData = new FormData(e.currentTarget);
-    const result = await signInAction(formData);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const result = await signInAction(formData);
 
-    if (result?.error) {
-      setError(result.error);
+      if (result?.error) {
+        setError(result.error);
+        setLoading(false);
+      }
+    } catch {
+      setError("Unable to sign in right now. Please try again.");
       setLoading(false);
     }
   }

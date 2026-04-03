@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { createMongoServerClient } from "@/lib/db/mongo/server";
+import { getAppUrl } from "@/lib/env";
 
 export interface OrganizerSmtpSettings {
   enabled: boolean;
@@ -103,5 +104,5 @@ export async function sendOrganizerEmail(params: {
 }
 
 export function getAppBaseUrl() {
-  return process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  return getAppUrl();
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Inter } from "next/font/google";
+import { connection } from "next/server";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -18,13 +19,20 @@ const monoFont = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "ProofPass",
   description: "Verified talent passport rebuilt from the ProofPass v2 blueprint.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await connection();
+
   return (
     <html
       lang="en"

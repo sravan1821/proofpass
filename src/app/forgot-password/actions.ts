@@ -15,7 +15,6 @@ export async function requestPasswordResetAction(formData: FormData) {
 
   return {
     success: "If that account exists, a reset link has been generated.",
-    resetUrl: process.env.NODE_ENV === "production" ? undefined : resetUrl ?? undefined,
   };
 }
 

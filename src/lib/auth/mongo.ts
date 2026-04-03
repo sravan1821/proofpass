@@ -20,6 +20,7 @@ type PasswordResetToken = {
 };
 
 let indexesPromise: Promise<void> | null = null;
+let bootstrapAdminPromise: Promise<void> | null = null;
 
 async function ensureIndexes() {
   if (!indexesPromise) {
@@ -36,6 +37,91 @@ async function ensureIndexes() {
   }
 
   await indexesPromise;
+}
+
+export async function ensureBootstrapAdmin() {
+  const bootstrapEmail = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
+  const bootstrapPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD?.trim();
+
+  if (!bootstrapEmail || !bootstrapPassword) {
+    return;
+  }
+
+  if (!bootstrapAdminPromise) {
+    bootstrapAdminPromise = (async () => {
+      await ensureIndexes();
+      const db = await getMongoDb();
+      if (!db) return;
+
+      const authUsers = db.collection<AuthUser>("auth_users");
+      const profiles = db.collection("profiles");
+      const now = new Date().toISOString();
+      const passwordHash = await hash(bootstrapPassword, 12);
+
+      let user = await authUsers.findOne({ email: bootstrapEmail });
+      let authUserId: string;
+
+      if (!user) {
+        const newUser: OptionalId<AuthUser> = {
+          id: randomUUID(),
+          email: bootstrapEmail,
+          password_hash: passwordHash,
+          created_at: now,
+          updated_at: now,
+        };
+
+        await authUsers.insertOne(newUser);
+        authUserId = newUser.id;
+      } else {
+        await authUsers.updateOne(
+          { id: user.id },
+          {
+            $set: {
+              password_hash: passwordHash,
+              updated_at: now,
+            },
+          },
+        );
+        authUserId = user.id;
+      }
+
+      const profilePayload = {
+        auth_user_id: authUserId,
+        email: bootstrapEmail,
+        full_name: process.env.BOOTSTRAP_ADMIN_FULL_NAME?.trim() || "ProofPass Admin",
+        role: "super_admin",
+        approval_status: "approved",
+        org_name: "ProofPass",
+        org_type: "Corporate",
+        city: "Hyderabad",
+        state: "Telangana",
+        country: "India",
+        purpose: "Platform administration and organizer review",
+        updated_at: now,
+      };
+
+      const existingProfile = await profiles.findOne({
+        $or: [{ auth_user_id: authUserId }, { email: bootstrapEmail }],
+      });
+
+      if (existingProfile) {
+        await profiles.updateOne(
+          { id: existingProfile.id },
+          {
+            $set: profilePayload,
+          },
+        );
+      } else {
+        await profiles.insertOne({
+          id: randomUUID(),
+          created_at: now,
+          ...profilePayload,
+        });
+      }
+    })();
+  }
+
+  await bootstrapAdminPromise;
 }
 
 export async function findAuthUserByEmail(email: string) {
@@ -55,7 +141,12 @@ export async function findAuthUserById(id: string) {
 }
 
 export async function verifyPassword(email: string, password: string) {
-  const user = await findAuthUserByEmail(email);
+  const normalizedEmail = email.toLowerCase();
+  if (normalizedEmail === process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase()) {
+    await ensureBootstrapAdmin();
+  }
+
+  const user = await findAuthUserByEmail(normalizedEmail);
   if (!user) return null;
 
   const matches = await compare(password, user.password_hash);
