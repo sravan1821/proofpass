@@ -19,6 +19,11 @@ const monoFont = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "ProofPass",
   description: "Verified talent passport rebuilt from the ProofPass v2 blueprint.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default async function RootLayout({

@@ -20,6 +20,7 @@ type PasswordResetToken = {
 };
 
 let indexesPromise: Promise<void> | null = null;
+let bootstrapAdminPromise: Promise<void> | null = null;
 
 async function ensureIndexes() {
   if (!indexesPromise) {
@@ -36,6 +37,63 @@ async function ensureIndexes() {
   }
 
   await indexesPromise;
+}
+
+export async function ensureBootstrapAdmin() {
+  const bootstrapEmail = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
+  const bootstrapPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD?.trim();
+
+  if (!bootstrapEmail || !bootstrapPassword) {
+    return;
+  }
+
+  if (!bootstrapAdminPromise) {
+    bootstrapAdminPromise = (async () => {
+      await ensureIndexes();
+      const db = await getMongoDb();
+      if (!db) return;
+
+      const authUsers = db.collection<AuthUser>("auth_users");
+      const profiles = db.collection("profiles");
+      const now = new Date().toISOString();
+
+      let user = await authUsers.findOne({ email: bootstrapEmail });
+
+      if (!user) {
+        user = {
+          id: randomUUID(),
+          email: bootstrapEmail,
+          password_hash: await hash(bootstrapPassword, 12),
+          created_at: now,
+          updated_at: now,
+        };
+
+        await authUsers.insertOne(user);
+      }
+
+      const existingProfile = await profiles.findOne({ auth_user_id: user.id });
+      if (!existingProfile) {
+        await profiles.insertOne({
+          id: randomUUID(),
+          auth_user_id: user.id,
+          email: bootstrapEmail,
+          full_name: process.env.BOOTSTRAP_ADMIN_FULL_NAME?.trim() || "ProofPass Admin",
+          role: "super_admin",
+          approval_status: "approved",
+          org_name: "ProofPass",
+          org_type: "Corporate",
+          city: "Hyderabad",
+          state: "Telangana",
+          country: "India",
+          purpose: "Platform administration and organizer review",
+          created_at: now,
+          updated_at: now,
+        });
+      }
+    })();
+  }
+
+  await bootstrapAdminPromise;
 }
 
 export async function findAuthUserByEmail(email: string) {
@@ -55,6 +113,7 @@ export async function findAuthUserById(id: string) {
 }
 
 export async function verifyPassword(email: string, password: string) {
+  await ensureBootstrapAdmin();
   const user = await findAuthUserByEmail(email);
   if (!user) return null;
 
