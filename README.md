@@ -39,12 +39,6 @@ npm run dev
 
 The app will be available at `http://localhost:3000`.
 
-If you want a local MongoDB instance without installing Mongo directly, start only the database service from Docker Compose and keep the app running locally:
-
-```bash
-docker compose up -d mongo
-```
-
 If you want demo credentials for local testing, set the `TEST_*` variables in `.env` and run:
 
 ```bash
@@ -57,7 +51,7 @@ Use `env.example` as the reference file for required production values.
 
 - `APP_URL` must be the public HTTPS URL of the deployed app.
 - `AUTH_SECRET` must be a strong random secret.
-- `MONGODB_URI` should point to your production MongoDB instance or the `mongo` service from `docker-compose.yml`.
+- `MONGODB_URI` should point to your production MongoDB instance.
 - `MONGODB_DB` is optional if the database name is already included in `MONGODB_URI`.
 - `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` are only for one-time admin creation during deployment.
 - Remove `BOOTSTRAP_ADMIN_PASSWORD` from the environment after the admin account has been created.
@@ -82,7 +76,7 @@ This script creates or updates a `super_admin` user from `BOOTSTRAP_ADMIN_EMAIL`
 The repo now includes:
 
 - `Dockerfile` for a production Next.js standalone image
-- `docker-compose.yml` with app + MongoDB services
+- `docker-compose.yml` with the app service configured for an external MongoDB instance
 - `.dockerignore` for smaller builds
 
 For Coolify, do not publish the app with a host `ports:` mapping in Compose. Coolify handles the external routing itself.
@@ -93,7 +87,7 @@ For Coolify self-hosting:
 
 - Use the included `Dockerfile` or `docker-compose.yml`
 - Set the same environment variables from `env.example` in the Coolify UI
-- Run `npm run seed:admin` once after the app can reach MongoDB, then remove `BOOTSTRAP_ADMIN_PASSWORD`
+- Point `MONGODB_URI` to your existing MongoDB deployment
 - Put a reverse proxy and TLS in front of the app, and set `APP_URL` to that public domain
 
 ## Current Scope

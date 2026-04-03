@@ -14,25 +14,5 @@ services:
       MONGODB_DB: ${MONGODB_DB:-proofpass}
       NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}
       DEPLOYMENT_VERSION: ${DEPLOYMENT_VERSION:-}
-    depends_on:
-      mongo:
-        condition: service_healthy
     expose:
       - "3000"
-
-  mongo:
-    image: mongo:8
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_DATABASE: ${MONGODB_DB:-proofpass}
-    volumes:
-      - mongodb_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-
-volumes:
-  mongodb_data:
