@@ -4,6 +4,7 @@ import { findProfile, verifyPassword } from "@/lib/auth/mongo";
 import { createUserSession, clearUserSession } from "@/lib/auth/session";
 import { getPostSignInRedirect } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 export async function signInAction(formData: FormData) {
   try {
@@ -43,6 +44,10 @@ export async function signInAction(formData: FormData) {
       }),
     );
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     if (error instanceof Error && error.message.includes("AUTH_SECRET")) {
       return { error: "Authentication is not configured correctly. Set AUTH_SECRET in the deployment environment." };
     }
