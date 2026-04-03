@@ -25,6 +25,8 @@ export async function getMongoDb(): Promise<Db | null> {
     global.__proofpassMongoClientPromise ??
     new MongoClient(uri, {
       ignoreUndefined: true,
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
     }).connect();
 
   global.__proofpassMongoClientPromise = clientPromise;
